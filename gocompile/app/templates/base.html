@@ -4,14 +4,23 @@ body {background-color:#32C0B4;}
 </style>
   <head>
     {% if title %}
-    <title>{{title}} - microblog</title>
+    <title>{{title}} - GoCompile</title>
     {% else %}
-    <title>microblog</title>
+    <title>GoCompile</title>
     {% endif %}
   </head>
   <body>
-    <div>Microblog: <a href="/index">Home</a></div>
+    <div>GoCompile: <a href="/index">Home</a></div>
     <hr>
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    <ul>
+    {% for message in messages %}
+        <li>{{ message }} </li>
+    {% endfor %}
+    </ul>
+    {% endif %}
+    {% endwith %}
     {% block content %}{% endblock %}
   </body>
 </html>
