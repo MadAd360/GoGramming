@@ -8,6 +8,10 @@
     <p>
         Please enter your Username:<br>
         {{form.username(size=80)}}<br>
+	{% for error in form.errors.username %}
+        <span style="color: red;">[{{error}}]</span>
+        {% endfor %}<br>
+
     </p>
     <p>
         Please enter your Password:<br>
@@ -18,5 +22,7 @@
     </p>
     <p>{{form.remember_me}} Remember Me</p>
     <p><input type="submit" value="Sign In"></p>
+    <br>	
+    <a href="{{ url_for('create') }}">Create Account</a>
 </form>
 {% endblock %}
