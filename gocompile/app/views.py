@@ -5,7 +5,9 @@ from forms import LoginForm, CreateForm
 from models import User, ROLE_USER, ROLE_ADMIN
 import os
 import crypt
-from git import *
+from dulwich.repo import Repo
+import subprocess
+import random
 
 @lm.user_loader
 def load_user(id):
@@ -14,6 +16,12 @@ def load_user(id):
 @app.before_request
 def before_request():
     g.user = current_user
+
+def salt():
+    letters = 'abcdefghijklmnopqrstuvwxyz' \
+              'ABCDEFGHIJKLMNOPQRSTUVWXYZ' \
+              '0123456789/.'
+    return random.choice(letters) + random.choice(letters)
 
 @app.route('/')
 @app.route('/index')
@@ -56,19 +64,29 @@ def logout():
 @app.route('/create', methods = ['GET', 'POST'])
 def create():
     form = CreateForm()
+    working = "/mnt/usb/local/"
+    remote = "/mnt/usb/git/"
     if form.validate_on_submit():
-	user = User(nickname=form.username.data, password=form.password.data, email=form.email.data, role=ROLE_USER)
+	newuser = form.username.data
+	password = crypt.crypt(form.password.data,salt())
+	user = User(nickname=newuser, password=password, email=form.email.data, role=ROLE_USER)
 	db.session.add(user)
 	db.session.commit()
-	newuser = user.nickname
-	password = crypt.crypt(user.password,"22")
         os.system("sudo useradd -M -p " + password + " " + newuser)
-	os.system("sudo mkdir /srv/local/" + newuser)
-        os.system("sudo mkdir /srv/git/" + newuser)
-	os.system("sudo chmod 777 /srv/git/" + newuser)
-        os.system("sudo chmod 777 /srv/local/" + newuser)
-	repo = Repo.init("/srv/git/" + newuser + "/", bare=True)
-	working_repo = repo.clone("/srv/local/" + newuser + "/")
+	os.system("sudo mkdir " + working + newuser)
+        os.system("sudo mkdir " + remote + newuser)
+	os.system("sudo mkdir " + working + newuser + "/myRepo")
+	os.system("sudo chmod 777 " + remote + newuser)
+        os.system("sudo chmod 777 " + working + newuser)
+	repo = Repo.init_bare(remote  + newuser + "/")
+	working_repo = repo.clone(working + newuser + "/myRepo/", False, False, "origin")
+	#open(working + newuser + "/myRepo/testFile", 'a').close()
+	#p1 = subprocess.Popen(["sudo", "git", "add", "-A"], cwd=working + newuser +"/myRepo/")
+	#p1.wait()
+	#working_repo.do_commit("The first commit", committer="Jelmer Vernooij <jelmer@samba.org>")
+	p = subprocess.Popen(["sudo", "git", "remote", "add", "origin", "file:////mnt/usb/git/" + newuser + "/"], cwd=working + newuser +"/myRepo/")
+	p.wait()
+	open(remote + newuser + "/.htpasswd", 'a').writelines(newuser + ":" + password + "\n")
 	#add user file next to git repo
         return redirect(url_for('login'))
     return render_template('createAccount.html',
