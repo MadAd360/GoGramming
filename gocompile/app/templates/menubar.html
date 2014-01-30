@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<a href="http://gocompile.wordpress.com/">Follow My Progress</a>
+<h1>Hi, {{user.nickname}}!</h1>
+<nav class="navbar navbar-default" role="navigation">
+
+<ul class="nav navbar-nav">
+<li><a href=""><i class="icon-wrench"></i> Commit</a></li>
+<li><a href=""><i class="icon-wrench"></i> Push</a></li>
+<li><a href=""><i class="icon-wrench"></i> Pull</a></li>
+<li><a href=""><i class="icon-wrench"></i> Delete</a></li>
+<li><a href=""><i class="icon-wrench"></i> View</a></li>
+<li><a href=""><i class="icon-wrench"></i> Run</a></li>
+<li><a href=""><i class="icon-wrench"></i> Compile</a></li>
+<li><a href=""><i class="icon-wrench"></i> Validate</a></li>
+<a href="#" class="dropdown-toggle" data-toggle="dropdown">Create<b class="caret"></b></a>
+<li><a href=""> Create</a>
+	<ul>
+	<form action="" method="post" name="addfile">
+        {{form.hidden_tag()}}
+  	<li><a class="menuform">Filename:</a></li>
+	<li><a class="menuform">{{form.filename(type="text", size="13", maxlength="25")}}</a></li>
+
+	<li><a class="menuform"><input type="submit" value="Add"></a></li>	
+	</form>
+	</ul>
+</li>
+</ul>
+</nav>
+{% block within %}{% endblock %}
+{% endblock %}

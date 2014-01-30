@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block content %}
+<a href="http://gocompile.wordpress.com/">Follow My Progress</a>
+<h1>Hi, {{user.nickname}}!</h1>
+{% for post in posts %}
+<div><p>{{post.author.nickname}} says: <b>{{post.body}}</b></p></div>
+{% endfor %}
+{% endblock %}

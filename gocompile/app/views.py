@@ -1,13 +1,14 @@
 from flask import render_template, flash, redirect, session, url_for, request, g
 from flask.ext.login import login_user, logout_user, current_user, login_required
 from app import app, db, lm
-from forms import LoginForm, CreateForm
-from models import User, ROLE_USER, ROLE_ADMIN
+from forms import LoginForm, CreateForm, AddForm
+from models import User, Post, ROLE_USER, ROLE_ADMIN
 import os
 import crypt
 from dulwich.repo import Repo
 import subprocess
 import random
+import datetime
 
 @lm.user_loader
 def load_user(id):
@@ -23,25 +24,35 @@ def salt():
               '0123456789/.'
     return random.choice(letters) + random.choice(letters)
 
-@app.route('/')
-@app.route('/index')
+@app.route('/', methods = ['GET', 'POST'])
+@app.route('/index', methods = ['GET', 'POST'])
 @login_required
 def index():
     user = g.user
-    posts = [ # fake array of posts
+    working = "/mnt/usb/local/"
+
+    form = AddForm()
+     
+    if form.validate_on_submit():
+	filepath = working + user.nickname + "/myRepo/" + form.filename.data
+	if not os.path.isfile(filepath):
+	    open(filepath, 'a').close()
+            text = open(filepath, 'r').read()
+	    p = Post(body=text, timestamp=datetime.datetime.utcnow(), author=user) 
+	    db.session.add(p)
+	    db.session.commit()
+
+    files = [ # fake array of posts
         { 
-            'author': { 'nickname': 'John' }, 
-            'body': 'Beautiful day in Portland!' 
-        },
-        { 
-            'author': { 'nickname': 'Susan' }, 
-            'body': 'The Avengers movie was so cool!' 
+            'filename': 'totesfake', 
+            'content': 'Beautiful day in Portland!' 
         }
     ]
     return render_template("index.html",
         title = 'Home',
         user = user,
-        posts = posts)
+	form = form,
+	files = files)
 
 @app.route('/login', methods = ['GET', 'POST'])
 def login():
@@ -69,7 +80,7 @@ def create():
     if form.validate_on_submit():
 	newuser = form.username.data
 	password = crypt.crypt(form.password.data,salt())
-	user = User(nickname=newuser, password=password, email=form.email.data, role=ROLE_USER)
+	user = User(nickname=newuser, password=form.password.data, email=form.email.data, role=ROLE_USER)
 	db.session.add(user)
 	db.session.commit()
         os.system("sudo useradd -M -p " + password + " " + newuser)
@@ -87,8 +98,7 @@ def create():
 	p = subprocess.Popen(["sudo", "git", "remote", "add", "origin", "file:////mnt/usb/git/" + newuser + "/"], cwd=working + newuser +"/myRepo/")
 	p.wait()
 	open(remote + newuser + "/.htpasswd", 'a').writelines(newuser + ":" + password + "\n")
-	#add user file next to git repo
-        return redirect(url_for('login'))
+	return redirect(url_for('login'))
     return render_template('createAccount.html',
         title = 'Create New Account',
         form = form)

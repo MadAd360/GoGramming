@@ -35,3 +35,6 @@ class CreateForm(Form):
     email = TextField('email', validators = [Required()])
     password = PasswordField('password', validators = [Required()])
 
+
+class AddForm(Form):
+    filename = TextField('filename', validators = [Required()])
