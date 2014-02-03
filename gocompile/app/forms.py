@@ -1,7 +1,9 @@
 from flask.ext.wtf import Form
-from wtforms import TextField, BooleanField, PasswordField
+from wtforms import TextField, BooleanField, PasswordField, SelectField
 from wtforms.validators import Required
 from models import User
+import os
+import settings
 
 class LoginForm(Form):
     username = TextField('username', validators = [Required()])
@@ -38,3 +40,12 @@ class CreateForm(Form):
 
 class AddForm(Form):
     filename = TextField('filename', validators = [Required()])
+#    available = [None]
+#    path = settings.WORKING_DIR + user.nickname
+    #for sub in os.listdir(path)
+#	if os.path.isdir(path + sub)
+#	    available.extend([(sub,sub)])
+    repository = SelectField('repository')
+
+	
+

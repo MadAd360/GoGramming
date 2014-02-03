@@ -9,7 +9,7 @@ class User(db.Model):
     email = db.Column(db.String(120), unique = True)
     password = db.Column(db.String(120))
     role = db.Column(db.SmallInteger, default = ROLE_USER)
-    posts = db.relationship('Post', backref = 'author', lazy = 'dynamic')
+    repos = db.relationship('Rpstry', backref = 'owner', lazy = 'dynamic')
 
     def is_authenticated(self):
         return True
@@ -39,3 +39,21 @@ class Post(db.Model):
 
     def __repr__(self):
         return '<Post %r>' % (self.body)
+
+class Rpstry(db.Model):
+    id = db.Column(db.Integer, primary_key = True)
+    repourl  = db.Column(db.String(140))
+    files = db.relationship('File', backref = 'repo', lazy = 'dynamic')
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+
+    def __repr__(self):
+        return '<Rpstry %r>' % (self.repourl)
+
+class File(db.Model):
+    id = db.Column(db.Integer, primary_key = True)
+    filename  = db.Column(db.String(140))
+    type  = db.Column(db.String(140))
+    repo_id = db.Column(db.Integer, db.ForeignKey('rpstry.id'))
+
+    def __repr__(self):
+        return '<File %r>' % (self.filename)

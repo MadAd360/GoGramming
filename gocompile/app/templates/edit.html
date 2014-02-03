@@ -1,0 +1,15 @@
+{% extends "menubar.html" %}
+{% block within %}
+<div class="panel panel-default">
+  <div class="panel-body">
+<h4 class="col-md-4">{{file.filename}}:</h4>
+    <div class="btn-group pull-right">
+  <button type="button" class="btn btn-default">Left</button>
+  <button type="button" class="btn btn-default">Middle</button>
+  <button type="button" class="btn btn-default">Right</button>
+	</div>
+
+    <textarea class="form-control " rows="30">{{file.content}}</textarea>
+ </div>
+</div>
+{% endblock %}

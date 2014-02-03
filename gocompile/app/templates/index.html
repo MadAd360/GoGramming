@@ -1,8 +1,23 @@
 {% extends "menubar.html" %}
 {% block within %}
     {% for file in files %}
-    <hr>
-    <p>{{file.filename}}: </b>
-	{{file.content}}</b></p>
+<div class="panel panel-default">
+<div class="panel-heading">{{file.filename}}:
+<form action="" method="post" name="login">
+
+    <div class="btn-group pull-right">
+  <button type="button" class="btn btn-default">Left</button>
+  <button type="button" class="btn btn-default">Middle</button>
+  <a type="button" href="{{url_for('edit', filepath='/myRepo/' + file.filename)}}" class="btn btn-default">Right</a>
+</div>
+</form>        
+ </div>
+  <div class="panel-body">
+	
+    <p> 
+
+	<pre>{{file.content}}</pre></p>
+ </div>
+</div>
     {% endfor %}
 {% endblock %}

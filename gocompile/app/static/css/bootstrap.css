@@ -4142,6 +4142,8 @@ textarea.input-group-sm > .input-group-btn > .btn {
 
 .nav-tabs {
   border-bottom: 1px solid #dddddd;
+  background-color: white;
+  text-align: bottom;
 }
 
 .nav-tabs > li {

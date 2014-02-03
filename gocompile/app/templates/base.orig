@@ -5,30 +5,28 @@
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
 <script src="/static/js/bootstrap.js"></script>
-<style type="text/css">
-   body { background: #32C0B4; }
-</style>
 
     {% if title %}
-    <title>{{title}}: Go-gramming</title>
+    <title>{{title}} - GoCompile</title>
     {% else %}
-    <title>Go-gramming</title>
+    <title>GoCompile</title>
     {% endif %}
-
-<link rel="icon" type="image/ico" href="{{ url_for('static', filename = 'images/favicon.ico') }}"></link> 
-<link rel="shortcut icon" href="{{ url_for('static', filename = 'images/favicon.ico') }}"></link> 
-
- </head>
-
+  </head>
   <body>
     <div class="container">
-	<ul class="nav nav-tabs">
-	<li><a class="brand" href="{{ url_for('index') }}"><img src="{{ url_for('static', filename = 'images/go.png') }}" class="img-responsive" alt="Responsive image" border="0"></a></li>
+<nav class="navbar navbar-default" role="navigation">
+	<div class="container-fluid">
+	<ul class="nav navbar-nav">
+	<div class="navbar-inner">
+	<div class="container">
+	<a class="brand" href="{{ url_for('index') }}">Go-gramming</div>
 	<li><a href="/index"><i ></i>Home</a></li>
 	{% if g.user.is_authenticated() %}
-        <li><a href="{{ url_for('logout') }}"><i ></i>Logout {{user.nickname}}</a></li>
+        <li><a href="{{ url_for('logout') }}"><i ></i>Logout</a></li>
         {% endif %}
 	</ul>
+        </div>
+</nav>
 
     <hr>
     {% with messages = get_flashed_messages() %}
