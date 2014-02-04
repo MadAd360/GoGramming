@@ -42,9 +42,24 @@ def menusetup(user):
             f = File(filename=form.filename.data, type="txt", repo=myrepo)
 
             db.session.add(f)
-            db.session.commit()	
+            db.session.commit()
+    else: menubutton(user)    	
 
     return form
+
+def menubutton(user):
+        if request.method == 'POST':
+            if request.form.get('bar', None) == 'Commit':
+		p1 = subprocess.Popen(["sudo", "git", "add", "-A"], cwd=settings.WORKING_DIR + user.nickname +"/myRepo/")
+        	p1.wait()
+        	working_repo = Repo(settings.WORKING_DIR + user.nickname +"/myRepo/")
+		working_repo.do_commit("Test commit", committer=user.nickname + "<" + user.email + ">")
+            if request.form.get('bar', None) == 'Push':
+                p1 = subprocess.Popen(["sudo", "git", "push", "origin", "master"], cwd=settings.WORKING_DIR + user.nickname + "/myRepo/")
+                p1.wait()
+	    if request.form.get('bar', None) == 'Pull':
+                p1 = subprocess.Popen(["sudo", "git", "pull", "origin", "master"], cwd=settings.WORKING_DIR + user.nickname + "/myRepo/")
+                p1.wait()
 
 @app.route('/', methods = ['GET', 'POST'])
 @app.route('/index', methods = ['GET', 'POST'])
@@ -52,7 +67,8 @@ def menusetup(user):
 def index():
     user = g.user
     form = menusetup(user)
-
+    menubutton(user)
+	
     dbfiles = user.repos.filter_by().first().files    
     files = []	
     
@@ -82,10 +98,23 @@ def edit(filepath):
     path = settings.WORKING_DIR + user.nickname + "/" + filepath	
     if  os.path.isfile(path):
 	name = os.path.split(path)[1]
-        text = open(path, 'r+').read()
-        file = {
+
+	if request.method == 'POST':
+	    if request.form.get('btn', None) == 'Save':
+		os.system("sudo rm " + path)
+		open(path, 'w').write(request.form['newcontent'])
+	    if request.form.get('btn', None) == 'Delete':
+                f = File.query.filter_by(filename=name).first()
+		db.session.delete(f)
+		db.session.commit()
+		os.system("sudo rm " + path)
+		return redirect(url_for('index'))		
+			
+	
+        text = open(path, 'r')
+	file = {
             'filename': name ,
-            'content': text
+            'content': text.read()
         }
     	return render_template("edit.html",
             title = 'Edit',

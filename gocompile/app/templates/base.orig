@@ -2,33 +2,75 @@
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" type="text/css"  href="/static/css/bootstrap.css">
+    <link rel="stylesheet" href="/static/css/prettify.css">
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
 <script src="/static/js/bootstrap.js"></script>
+<script src="/static/js/prettify.js"></script>
+
+<script type="text/javascript">
+$(document).delegate('#textbox', 'keydown', function(e) {
+  var keyCode = e.keyCode || e.which;
+
+  if (keyCode == 9) {
+    e.preventDefault();
+    var start = $(this).get(0).selectionStart;
+    var end = $(this).get(0).selectionEnd;
+
+    // set textarea value to: text before caret + tab + text after caret
+    $(this).val($(this).val().substring(0, start)
+                + "\t"
+                + $(this).val().substring(end));
+
+    // put caret at right position again
+    $(this).get(0).selectionStart =
+    $(this).get(0).selectionEnd = start + 1;
+  }
+});
+</script>
+<script>
+
+  !function ($) {
+    $(function(){
+      window.prettyPrint && prettyPrint()
+    })
+  }(window.jQuery)
+</script>
+
+
+<style type="text/css">
+   body { background: #32C0B4; }
+  
+   textarea {white-space:nowrap; }
+
+   btn {color:red;}
+</style>
 
     {% if title %}
-    <title>{{title}} - GoCompile</title>
+    <title>{{title}}: Go-gramming</title>
     {% else %}
-    <title>GoCompile</title>
+    <title>Go-gramming</title>
     {% endif %}
-  </head>
+
+<link rel="icon" type="image/ico" href="{{ url_for('static', filename = 'images/favicon.ico') }}"></link> 
+<link rel="shortcut icon" href="{{ url_for('static', filename = 'images/favicon.ico') }}"></link> 
+
+{% block main %}{% endblock %}
+
+ </head>
+
   <body>
     <div class="container">
-<nav class="navbar navbar-default" role="navigation">
-	<div class="container-fluid">
-	<ul class="nav navbar-nav">
-	<div class="navbar-inner">
-	<div class="container">
-	<a class="brand" href="{{ url_for('index') }}">Go-gramming</div>
-	<li><a href="/index"><i ></i>Home</a></li>
+	<ul class="nav nav-tabs">
+	<li><a class="brand" href="{{ url_for('index') }}"><img src="{{ url_for('static', filename = 'images/go.png') }}" class="img-responsive" alt="Responsive image" border="0"></a></li>
+	<li><a href="/index" class="btn btn-default">Home</a></li>
 	{% if g.user.is_authenticated() %}
-        <li><a href="{{ url_for('logout') }}"><i ></i>Logout</a></li>
+        <li><a href="{{ url_for('logout') }}" class="btn btn-default">Logout {{user.nickname}}</a></li>
         {% endif %}
 	</ul>
-        </div>
-</nav>
 
-    <hr>
+
+
     {% with messages = get_flashed_messages() %}
     {% if messages %}
     <ul>
