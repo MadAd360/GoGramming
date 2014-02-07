@@ -2,11 +2,9 @@
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" type="text/css"  href="/static/css/bootstrap.css">
-    <link rel="stylesheet" href="/static/css/prettify.css">
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
 <script src="/static/js/bootstrap.js"></script>
-<script src="/static/js/prettify.js"></script>
 
 <script type="text/javascript">
 $(document).delegate('#textbox', 'keydown', function(e) {
@@ -28,22 +26,20 @@ $(document).delegate('#textbox', 'keydown', function(e) {
   }
 });
 </script>
-<script>
-
-  !function ($) {
-    $(function(){
-      window.prettyPrint && prettyPrint()
-    })
-  }(window.jQuery)
-</script>
-
 
 <style type="text/css">
    body { background: #32C0B4; }
-  
-   textarea {white-space:nowrap; }
+   textarea {  
+    white-space: pre;
+    word-wrap: normal;
+   }
 
-   btn {color:red;}
+.container-fluid{
+  height:100%;
+  display:table;
+  width: 100%;
+  padding: 0;
+}  
 </style>
 
     {% if title %}
