@@ -57,3 +57,12 @@ class File(db.Model):
 
     def __repr__(self):
         return '<File %r>' % (self.filename)
+
+class Language(db.Model):
+    id = db.Column(db.Integer, primary_key = True)
+    filetype  = db.Column(db.String(140), unique = True)
+    compile  = db.Column(db.String(140))
+    run  = db.Column(db.String(140))
+
+    def __repr__(self):
+        return '< %r>' % (self.filetype)

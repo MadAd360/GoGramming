@@ -1,9 +1,10 @@
 from flask.ext.wtf import Form
 from wtforms import TextField, BooleanField, PasswordField, SelectField
-from wtforms.validators import Required
+from wtforms.validators import Required, Email, EqualTo, Regexp
 from models import User
 import os
 import settings
+from passlib.hash import sha512_crypt
 
 class LoginForm(Form):
     username = TextField('username', validators = [Required()])
@@ -25,7 +26,8 @@ class LoginForm(Form):
             self.username.errors.append('Unknown username')
             return False
 
-        if not user.check_password(self.password.data):
+        #if not user.check_password(
+	if not sha512_crypt.verify(self.password.data, user.password):
             self.password.errors.append('Invalid password')
             return False
 
@@ -33,18 +35,35 @@ class LoginForm(Form):
         return True
 
 class CreateForm(Form):
-    username = TextField('username', validators = [Required()])
-    email = TextField('email', validators = [Required()])
+    username = TextField('username', validators = [Required(), Regexp('^[^ ]*$')])
+    email = TextField('email', validators = [Required(), Email()])
     password = PasswordField('password', validators = [Required()])
+    confirm = PasswordField('confirm', validators = [Required(), EqualTo('password')])
 
+    def __init__(self, *args, **kwargs):
+        Form.__init__(self, *args, **kwargs)
+        self.user = None
+
+    def validate(self):
+        rv = Form.validate(self)
+        if not rv:
+            return False
+
+        user = User.query.filter_by(nickname=self.username.data).first()
+        if user is not None:
+            self.username.errors.append('Username already in use')
+            return False
+
+	user = User.query.filter_by(email=self.email.data).first()
+        if user is not None:
+            self.username.errors.append('Email already exists')
+            return False
+
+        self.user = user
+        return True
 
 class AddForm(Form):
     filename = TextField('filename', validators = [Required()])
-#    available = [None]
-#    path = settings.WORKING_DIR + user.nickname
-    #for sub in os.listdir(path)
-#	if os.path.isdir(path + sub)
-#	    available.extend([(sub,sub)])
     repository = SelectField('repository')
 
 	

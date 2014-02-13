@@ -2,7 +2,7 @@ from flask import render_template, flash, redirect, session, url_for, request, g
 from flask.ext.login import login_user, logout_user, current_user, login_required
 from app import app, db, lm
 from forms import LoginForm, CreateForm, AddForm
-from models import User, Post, Rpstry, File, ROLE_USER, ROLE_ADMIN
+from models import User, Post, Rpstry, File, Language, ROLE_USER, ROLE_ADMIN
 import os
 import crypt
 from dulwich.repo import Repo
@@ -10,6 +10,9 @@ import subprocess
 import random
 import datetime
 import settings
+from passlib.hash import sha512_crypt
+import language_loader
+
 
 @lm.user_loader
 def load_user(id):
@@ -60,6 +63,12 @@ def menubutton(user):
 	    if request.form.get('bar', None) == 'Pull':
                 p1 = subprocess.Popen(["sudo", "git", "pull", "origin", "master"], cwd=settings.WORKING_DIR + user.nickname + "/myRepo/")
                 p1.wait()
+	    if request.form.get('bar', None) == 'Compile':
+		languages = Language.query.all()
+		for lang in languages:
+                    db.session.delete(lang)
+		db.session.commit()
+		language_loader.loadLanguages('plugins')
 
 @app.route('/', methods = ['GET', 'POST'])
 @app.route('/index', methods = ['GET', 'POST'])
@@ -98,6 +107,7 @@ def edit(filepath):
     path = settings.WORKING_DIR + user.nickname + "/" + filepath	
     if  os.path.isfile(path):
 	name = os.path.split(path)[1]
+	output = ""
 
 	if request.method == 'POST':
 	    if request.form.get('btn', None) == 'Save':
@@ -108,7 +118,22 @@ def edit(filepath):
 		db.session.delete(f)
 		db.session.commit()
 		os.system("sudo rm " + path)
-		return redirect(url_for('index'))		
+		return redirect(url_for('index'))
+	    if request.form.get('btn', None) == 'Compile':
+		templist = name.split('.')
+		output = "1"
+		if len(templist) > 1:
+		    type = templist[1]
+		    lang = Language.query.filter_by(filetype=type).first()
+		    output = type
+       	 	    if lang is not None:
+			args = lang.compile.split()
+			args.append(path)
+			process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+			out = process.communicate()
+			output = make_response(out)
+    			output.headers["content-type"] = "text/plain"
+			process.wait()
 			
 	
         text = open(path, 'r')
@@ -120,7 +145,8 @@ def edit(filepath):
             title = 'Edit',
             user = user,
             form = form,
-	    file = file)
+	    file = file,
+	    output = output)
 
     return redirect(url_for('index'))
 
@@ -132,7 +158,6 @@ def login():
         return redirect(url_for('index'))
     form = LoginForm()
     if form.validate_on_submit():
-        #session['remember_me'] = form.remember_me.data
 	login_user(form.user, form.remember_me.data)
         return redirect(url_for('index'))
     return render_template('login.html', 
@@ -150,10 +175,10 @@ def create():
     if form.validate_on_submit():
 	newuser = form.username.data
 	password = crypt.crypt(form.password.data,salt())
-	user = User(nickname=newuser, password=form.password.data, email=form.email.data, role=ROLE_USER)
+	user = User(nickname=newuser, password=sha512_crypt.encrypt(form.password.data), email=form.email.data, role=ROLE_USER)
 	db.session.add(user)
 	db.session.commit()
-        #os.system("sudo useradd -M -p " + password + " " + newuser)
+        os.system("sudo useradd -M -p " + password + " " + newuser)
 	os.system("sudo mkdir " + settings.WORKING_DIR + newuser)
         os.system("sudo mkdir " + settings.REMOTE_DIR + newuser)
 	os.system("sudo mkdir " + settings.WORKING_DIR + newuser + "/myRepo")

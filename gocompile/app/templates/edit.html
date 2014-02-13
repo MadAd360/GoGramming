@@ -10,36 +10,41 @@ $(document).ready(function(){
 	});
 });
 </script>
+
 {% endblock %}
 
 {% block within %}
+<form action="" method="post" name="login">
+
 <div class="panel panel-default">
-  <div class="panel-body">
-<form role="form" method="post" name="Edit">
-<h4 class="col-md-4">{{file.filename}}:</h4>
+<div class="panel-heading">{{file.filename}}:
 
     <div class="btn-group pull-right">
   <button name="btn" value="Save" type="submit" class="btn btn-default">Save</button>
-  <button name="btn" value="Validate" type="submit" class="btn btn-default">Validate</button>
+  <button name="btn" value="Compile" type="submit" class="btn btn-default">Compile</button>
   <a id="popover" class="btn btn-default" data-toggle="popover" title="Are you sure?" >Delete</a>
-	</div>
+</div>
+</div>
 
-   <textarea name="newcontent" class="form-control" rows="30">{{file.content}}</textarea>
-
-<pre id="editor" class="form-control" style=" height: 450px;">{{file.content}}</pre>
+<div class="panel-body">
+<p>
+</p>
+   <textarea id="code" name="newcontent">{{file.content}}</textarea>
 
 <script>
-    var editor = ace.edit('editor');
-    editor.setTheme("ace/theme/tomorrow");
-    editor.getSession().setMode("ace/mode/javascript");
-    var textarea = $('textarea[name="newcontent"]').hide();
-    editor.getSession().on('change', function(){
-        textarea.val(editor.getSession().getValue());
+var cm = CodeMirror.fromTextArea(document.getElementById("code"), {
+    matchBrackets: true,
+    mode: "text/javascript",
+    theme: "go-theme",
+    lineNumbers: true
+  });
+var savearea = $('textarea[name="newcontent"]').hide();
+cm.on('change', function(){
+	cm.save();
     });
 </script>
-
-
-</form>
- </div>
 </div>
+</div>
+</form>
+<pre class="pre-scrollable">{{output}}</pre>
 {% endblock %}

@@ -2,32 +2,41 @@
 
 {% block within %}
     {% for file in files %}
+<form action="" method="post" name="login">
 <div class="panel panel-default">
 <div class="panel-heading">{{file.filename}}:
-<form action="" method="post" name="login">
 
     <div class="btn-group pull-right">
   <button type="button" class="btn btn-default">Remove</button>
   <a type="button" href="{{url_for('edit', filepath='/myRepo/' + file.filename)}}" class="btn btn-default">Edit</a>
 </div>
-</form>        
  </div>
+
   <div class="panel-body">
 	
     <p> 
-
-<pre id="editor" class="form-control" style="position:relative; height: 300px; ">{{file.content}}</pre>
+    </p>
+   <textarea id="code" name="newcontent">{{file.content}}</textarea>
 
 <script>
-    var area = document.getElementById('editor');
-    area.setAttribute('id','editor{{file.filename}}');
-    var editor = ace.edit('editor{{file.filename}}');
-    editor.setTheme("ace/theme/tomorrow");
-    editor.getSession().setMode("ace/mode/javascript");
+    var area = document.getElementById('code');
+    area.setAttribute('id','code{{file.filename}}');
+var cm = CodeMirror.fromTextArea(document.getElementById('code{{file.filename}}'), {
+    matchBrackets: true,
+    mode: "text/javascript",
+    theme: "go-theme",
+    lineNumbers: true,
+    readOnly: true
+  });
+var savearea = $('textarea[name="newcontent"]').hide();
+cm.on('change', function(){
+        cm.save();
+    });
 </script>
 
 
  </div>
 </div>
+</form>        
     {% endfor %}
 {% endblock %}
