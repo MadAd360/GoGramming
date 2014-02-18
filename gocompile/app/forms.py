@@ -64,7 +64,7 @@ class CreateForm(Form):
 
 class AddForm(Form):
     filename = TextField('filename', validators = [Required()])
-    repository = SelectField('repository')
-
+    location = SelectField('location')
+    type = SelectField('type')
 	
 

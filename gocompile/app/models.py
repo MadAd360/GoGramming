@@ -10,6 +10,7 @@ class User(db.Model):
     password = db.Column(db.String(120))
     role = db.Column(db.SmallInteger, default = ROLE_USER)
     repos = db.relationship('Rpstry', backref = 'owner', lazy = 'dynamic')
+    errors = db.relationship('Error', backref = 'owner', lazy = 'dynamic')
 
     def is_authenticated(self):
         return True
@@ -51,6 +52,7 @@ class Rpstry(db.Model):
 
 class File(db.Model):
     id = db.Column(db.Integer, primary_key = True)
+    path = db.Column(db.String(140))
     filename  = db.Column(db.String(140))
     type  = db.Column(db.String(140))
     repo_id = db.Column(db.Integer, db.ForeignKey('rpstry.id'))
@@ -63,6 +65,17 @@ class Language(db.Model):
     filetype  = db.Column(db.String(140), unique = True)
     compile  = db.Column(db.String(140))
     run  = db.Column(db.String(140))
+    syntax = db.Column(db.String(140))
 
     def __repr__(self):
         return '< %r>' % (self.filetype)
+
+class Error(db.Model):
+    id = db.Column(db.Integer, primary_key = True)
+    path = db.Column(db.String(140))
+    filename  = db.Column(db.String(140))
+    message  = db.Column(db.Text)
+    repo_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+
+    def __repr__(self):
+        return '<Error %r>' % (self.filename)

@@ -2,7 +2,7 @@ from flask import render_template, flash, redirect, session, url_for, request, g
 from flask.ext.login import login_user, logout_user, current_user, login_required
 from app import app, db, lm
 from forms import LoginForm, CreateForm, AddForm
-from models import User, Post, Rpstry, File, Language, ROLE_USER, ROLE_ADMIN
+from models import User, Post, Rpstry, File, Language, Error, ROLE_USER, ROLE_ADMIN
 import os
 import crypt
 from dulwich.repo import Repo
@@ -28,24 +28,85 @@ def salt():
               '0123456789/.'
     return random.choice(letters) + random.choice(letters)
 
+def getfolders(user):
+    path = settings.WORKING_DIR + user.nickname
+    dirs = []
+    for sub in os.listdir(path):
+	subpath = path + "/" + sub
+	if os.path.isdir(subpath):
+	    within = recurfolders(user, sub, 2)
+	    dirs.extend( [
+            {
+            	'folder': sub ,
+		'folderpath': sub,
+            	'within': within,
+		'right': True
+            }])
+    return dirs 
+
+def recurfolders(user, userpath, iternum):
+    path = settings.WORKING_DIR + user.nickname + "/" + userpath
+    dirs = []	    
+    for sub in os.listdir(path):
+        subpath = path + "/" + sub
+        if os.path.isdir(subpath) and not sub == ".git":
+	    if iternum == 5:
+		iternum = 1
+	    rightorient = True
+	    if iternum  >= 3:
+		rightorient = False
+            within = recurfolders(user, userpath + "/" + sub, iternum + 1 )
+            dirs.extend( [
+            {
+                'folder': sub ,
+                'folderpath': userpath + "/" + sub,
+                'within': within,
+		'right': rightorient
+            }])
+    return dirs
+
+def allsubdirectories(path, prefix):
+    available = []
+    for sub in os.listdir(path):
+	subpath = path + "/" + sub
+       	if os.path.isdir(subpath) and not sub == ".git":
+	    display = prefix + sub
+            available.extend([(subpath,display)])
+	    available.extend(allsubdirectories(subpath, prefix + "-"))
+
+    return available
+
+
 def menusetup(user):
     form = AddForm()
     available = []
     localrepopath = settings.WORKING_DIR + user.nickname
+    #for root, dirs, files in os.walk(localrepopath, topdown=True):
+	#if '.git' in dirs:
+      	    #dirs.remove('.git')
+    	#for sub in dirs:
+	    #available.extend([(sub,sub)])
     for sub in os.listdir(localrepopath):
-       if os.path.isdir(localrepopath + "/" + sub):
+	subpath = localrepopath + "/" + sub
+        if os.path.isdir(subpath):
            available.extend([(sub,sub)])
-    form.repository.choices = available
+	   available.extend(allsubdirectories(subpath, "|-"))
+    form.location.choices = available
+
 
     if form.validate_on_submit():
-    	filepath = settings.WORKING_DIR + user.nickname + "/" + form.repository.data + "/" + form.filename.data
-        if not os.path.isfile(filepath):
-            open(filepath, 'a').close()
-            myrepo = user.repos.filter_by(repourl= "/" + form.repository.data + "/" ).first()
-            f = File(filename=form.filename.data, type="txt", repo=myrepo)
+	userlocation = form.location.data
+	locationpath = settings.WORKING_DIR + user.nickname + "/" + userlocation
+	if os.path.isdir(locationpath):
+		filepath = locationpath + "/" + form.filename.data
+        	if not os.path.isfile(filepath):
+            	    open(filepath, 'a').close()
+		    repository = userlocation.split("/")[0]
+            	    myrepo = user.repos.filter_by(repourl= "/" + repository + "/" ).first()
+            	    f = File(filename=form.filename.data, path=userlocation, type="txt", repo=myrepo)
 
-            db.session.add(f)
-            db.session.commit()
+            	    db.session.add(f)
+            	    db.session.commit()
     else: menubutton(user)    	
 
     return form
@@ -55,7 +116,7 @@ def menubutton(user):
             if request.form.get('bar', None) == 'Commit':
 		p1 = subprocess.Popen(["sudo", "git", "add", "-A"], cwd=settings.WORKING_DIR + user.nickname +"/myRepo/")
         	p1.wait()
-        	working_repo = Repo(settings.WORKING_DIR + user.nickname +"/myRepo/")
+        	working_repo = Repo(settings.WORKING_DIR + user.nickname + "/myRepo/")
 		working_repo.do_commit("Test commit", committer=user.nickname + "<" + user.email + ">")
             if request.form.get('bar', None) == 'Push':
                 p1 = subprocess.Popen(["sudo", "git", "push", "origin", "master"], cwd=settings.WORKING_DIR + user.nickname + "/myRepo/")
@@ -76,25 +137,30 @@ def menubutton(user):
 def index():
     user = g.user
     form = menusetup(user)
-    menubutton(user)
+    dirs = getfolders(user)
 	
     dbfiles = user.repos.filter_by().first().files    
     files = []	
     
     for file in dbfiles:
 	name = file.filename
-	filepath = settings.WORKING_DIR + user.nickname + "/myRepo/" + name 
-	text = open(filepath, 'r').read()
-	files.extend( [
-        { 
-            'filename': name , 
-            'content': text 
-        }])
+	filepath = settings.WORKING_DIR + user.nickname + "/" + file.path + "/" + name
+	if os.path.isfile(filepath):
+	    text = open(filepath, 'r').read()
+	    files.extend( [
+            { 
+            	'filename': name , 
+            	'content': text 
+            }])
+	else:
+	    db.session.delete(file)
+	    db.session.commit()
 	
     return render_template("index.html",
         title = 'Home',
         user = user,
 	form = form,
+	dirs =  dirs,
 	files = files)
 
 
@@ -103,15 +169,18 @@ def index():
 def edit(filepath):
     user = g.user
     form =  menusetup(user)
-    
+    dirs = getfolders(user)
+
     path = settings.WORKING_DIR + user.nickname + "/" + filepath	
+    
+
     if  os.path.isfile(path):
 	name = os.path.split(path)[1]
+	tail = os.path.split(path)[0]
 	output = ""
 
 	if request.method == 'POST':
 	    if request.form.get('btn', None) == 'Save':
-		os.system("sudo rm " + path)
 		open(path, 'w').write(request.form['newcontent'])
 	    if request.form.get('btn', None) == 'Delete':
                 f = File.query.filter_by(filename=name).first()
@@ -121,31 +190,46 @@ def edit(filepath):
 		return redirect(url_for('index'))
 	    if request.form.get('btn', None) == 'Compile':
 		templist = name.split('.')
-		output = "1"
 		if len(templist) > 1:
-		    type = templist[1]
+		    type = templist[len(templist) - 1]
 		    lang = Language.query.filter_by(filetype=type).first()
-		    output = type
        	 	    if lang is not None:
 			args = lang.compile.split()
 			args.append(path)
-			process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
-			out = process.communicate()
-			output = make_response(out)
-    			output.headers["content-type"] = "text/plain"
-			process.wait()
-			
+			#errorfile = open(errorpath, 'w')
+			p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+			p.wait()
+			text = ""
+			for line in p.stdout:
+			    text = text + line
+			text = text.replace(settings.WORKING_DIR, '')
+			existing = user.errors.filter_by(path=tail,filename=name).first()
+			if existing is not None:
+			    existing.message = text
+			else:
+			    error = Error(path=tail,filename=name, message=text, owner=user)
+			    db.session.add(error)
+			db.session.commit()
+			#errorfile.close()	
+
 	
-        text = open(path, 'r')
+	existing = user.errors.filter_by(path=tail,filename=name).first()
+	if existing is not None:
+	    output = existing.message
+	#if os.path.exists(errorpath):
+	#    errorfile = open(errorpath, 'r+')
+	#    output = errorfile.read()
+        text = open(path, 'r').read()
 	file = {
             'filename': name ,
-            'content': text.read()
+            'content': text
         }
     	return render_template("edit.html",
             title = 'Edit',
             user = user,
             form = form,
 	    file = file,
+	    dirs = dirs,
 	    output = output)
 
     return redirect(url_for('index'))
@@ -178,7 +262,7 @@ def create():
 	user = User(nickname=newuser, password=sha512_crypt.encrypt(form.password.data), email=form.email.data, role=ROLE_USER)
 	db.session.add(user)
 	db.session.commit()
-        os.system("sudo useradd -M -p " + password + " " + newuser)
+        #os.system("sudo useradd -M -p " + password + " " + newuser)
 	os.system("sudo mkdir " + settings.WORKING_DIR + newuser)
         os.system("sudo mkdir " + settings.REMOTE_DIR + newuser)
 	os.system("sudo mkdir " + settings.WORKING_DIR + newuser + "/myRepo")
@@ -189,10 +273,6 @@ def create():
 	db.session.add(newrepo)
         db.session.commit()
 	working_repo = repo.clone(settings.WORKING_DIR + newuser + newrepo.repourl, False, False, "origin")
-	#open(working + newuser + "/myRepo/testFile", 'a').close()
-	#p1 = subprocess.Popen(["sudo", "git", "add", "-A"], cwd=working + newuser +"/myRepo/")
-	#p1.wait()
-	#working_repo.do_commit("The first commit", committer="Jelmer Vernooij <jelmer@samba.org>")
 	p = subprocess.Popen(["sudo", "git", "remote", "add", "origin", "file:///" + settings.REMOTE_DIR + newuser + "/"], cwd=settings.WORKING_DIR + newuser + "/myRepo/")
 	p.wait()
 	open(settings.REMOTE_DIR + newuser + "/.htpasswd", 'a').writelines(newuser + ":" + password + "\n")
@@ -201,3 +281,35 @@ def create():
         title = 'Create New Account',
         form = form)
 
+
+@app.route('/view/<path:filepath>', methods = ['GET', 'POST'])
+@login_required
+def view(filepath):
+    user = g.user
+    form = menusetup(user)
+    dirs = getfolders(user)
+
+    files = []
+
+    folderpath = settings.WORKING_DIR + user.nickname + "/" + filepath
+    if os.path.isdir(folderpath):
+    	for sub in os.listdir(folderpath):
+	    filepath = folderpath + "/" + sub
+            if not os.path.isdir(filepath):
+	    	name = sub
+            	text = open(filepath, 'r').read()
+            	files.extend( [
+            	{
+            	    'filename': name ,
+            	    'content': text
+           	 }])
+
+
+    	return render_template("index.html",
+            title = 'View',
+            user = user,
+            form = form,
+            dirs =  dirs,
+            files = files)
+
+    return redirect(url_for('index'))
