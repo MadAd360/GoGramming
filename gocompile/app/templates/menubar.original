@@ -1,31 +1,116 @@
-{% extends "base.html" %}
+{% extends "base.html" %} 
+{% block main %}
+ 
+{% block head %}{% endblock %} 
+{% endblock %}
+
+
 {% block content %}
-<a href="http://gocompile.wordpress.com/">Follow My Progress</a>
-<h1>Hi, {{user.nickname}}!</h1>
+
+
 <nav class="navbar navbar-default" role="navigation">
+<div class="container-fluid">
+<div class="navbar-header">
+<button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#collapse">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+<a class="navbar-brand" href="{{ url_for('index') }}"><img src="{{ url_for('static', filename = 'images/go.png') }}" class="img-responsive" alt="Responsive image" border="0"></a>
+</div>
 
+<div class="collapse navbar-collapse" id="collapse">
 <ul class="nav navbar-nav">
-<li><a href=""><i class="icon-wrench"></i> Commit</a></li>
-<li><a href=""><i class="icon-wrench"></i> Push</a></li>
-<li><a href=""><i class="icon-wrench"></i> Pull</a></li>
-<li><a href=""><i class="icon-wrench"></i> Delete</a></li>
-<li><a href=""><i class="icon-wrench"></i> View</a></li>
-<li><a href=""><i class="icon-wrench"></i> Run</a></li>
-<li><a href=""><i class="icon-wrench"></i> Compile</a></li>
-<li><a href=""><i class="icon-wrench"></i> Validate</a></li>
-<a href="#" class="dropdown-toggle" data-toggle="dropdown">Create<b class="caret"></b></a>
-<li><a href=""> Create</a>
-	<ul>
-	<form action="" method="post" name="addfile">
-        {{form.hidden_tag()}}
-  	<li><a class="menuform">Filename:</a></li>
-	<li><a class="menuform">{{form.filename(type="text", size="13", maxlength="25")}}</a></li>
+  
+            <li class="dropdown">
+              <a data-toggle="dropdown" class="dropdown-toggle" href="#">View<b class="caret"></b></a>
+              <ul class="dropdown-menu">
+		{%- for dir in dirs recursive %}
+		{%- if dir.within -%}
+		    {%- if dir.right == True -%}
+		        <li class="dropdown-submenu">
+                        <a href="{{url_for('view', filepath=dir.folderpath)}}">{{ dir.folder }}</a>
+                        <ul class="dropdown-menu">
+			{{loop(dir.within)}}</ul>
+			</li>
+		    {% else %}
+			<li class="dropdown-submenu pull-left">
+                        <a href="{{url_for('view', filepath=dir.folderpath)}}">{{ dir.folder }}</a>
+                        <ul class="dropdown-menu">
+                        {{loop(dir.within)}}</ul>
+                        </li>
+		    {%- endif %}		
+		{% else %}
+                    <li><a href="{{url_for('view', filepath=dir.folderpath)}}">{{ dir.folder }}</a></li>
+                {%- endif %}
+		{%- endfor %}
+		</ul>
+		</li>
 
+
+
+
+
+
+<li class="dropdown">
+<a href="#" class="dropdown-toggle" data-toggle="dropdown">Create<b class="caret"></b></a>
+	<form class="dropdown-menu" action="" method="post" name="addfile">
+        {{form.hidden_tag()}}
+
+	<li><a>{{form.filename(class="form-control", placeholder="Name")}}</a></li>
+	<li><a>Location:</a></li>
+	<li><a>{{form.location(class="form-control")}}</a></li>
+	<li><a>Type:</a></li>
+	<li><a>{{form.type(class="form-control")}}</a></li>
 	<li><a class="menuform"><input type="submit" value="Add"></a></li>	
 	</form>
-	</ul>
 </li>
+
+<form class="navbar-form navbar-left" action="" method="post" name="commit">
+<div class="form-group">	
+<button class="btn btn-default" name="bar" value="Commit" type="submit">Commit</button>
+</div>
+</form>
+
+<form class="navbar-form navbar-left" action="" method="post" name="push">
+  <button class="btn btn-default" name="bar" value="Push" type="submit" >Push</button>
+</form>
+
+<form class="navbar-form navbar-left" action="" method="post" name="pull">  
+    <button class="btn btn-default" name="bar" value="Pull" type="submit" >Pull</button>
+</form>
+
+<form class="navbar-form navbar-left" action="" method="post" name="compile">  
+    <button class="btn btn-default" name="bar" value="Compile" type="submit" >Compile</button>
+</form>
+
+<form class="navbar-form navbar-left" action="" method="post" name="run">  
+    <button class="btn btn-default" name="bar" value="Run" type="submit" >Run</button>
+</form>
+
 </ul>
+<ul class="nav navbar-nav navbar-right">
+{% if g.user.is_authenticated() %}
+        <li><a href="{{ url_for('logout') }}"">Logout {{user.nickname}}</a></li>
+{% endif %}
+</ul>
+
+</div>
 </nav>
+
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    <ul>
+    {% for message in messages %}
+        <li>{{ message }} </li>
+    {% endfor %}
+    </ul>
+    {% endif %}
+    {% endwith %}
+
+<script src="/static/js/ace/ace.js" type="text/javascript" charset="utf-8"></script> 
+
 {% block within %}{% endblock %}
+
 {% endblock %}

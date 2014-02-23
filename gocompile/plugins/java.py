@@ -1,4 +1,5 @@
 from app import language
+import plugins
 
 class Java(language.Language):
 
@@ -10,3 +11,6 @@ class Java(language.Language):
 
     def getRun(self):
         return "java "
+
+    def getSyntax(self):
+        return "text/x-java"

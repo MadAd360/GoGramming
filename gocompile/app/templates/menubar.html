@@ -1,3 +1,4 @@
+
 {% extends "base.html" %} 
 {% block main %}
  
@@ -25,7 +26,7 @@
   
             <li class="dropdown">
               <a data-toggle="dropdown" class="dropdown-toggle" href="#">View<b class="caret"></b></a>
-              <ul class="dropdown-menu">
+              <ul class="dropdown-menu" role="menu">
 		{%- for dir in dirs recursive %}
 		{%- if dir.within -%}
 		    {%- if dir.right == True -%}
@@ -35,7 +36,7 @@
 			{{loop(dir.within)}}</ul>
 			</li>
 		    {% else %}
-			<li class="dropdown-submenu pull-left">
+			<li class="dropdown-submenu pull-lft">
                         <a href="{{url_for('view', filepath=dir.folderpath)}}">{{ dir.folder }}</a>
                         <ul class="dropdown-menu">
                         {{loop(dir.within)}}</ul>
@@ -58,9 +59,11 @@
 	<form class="dropdown-menu" action="" method="post" name="addfile">
         {{form.hidden_tag()}}
 
-  	<li><a>Filename:</a></li>
-	<li><a>{{form.filename(class="form-control")}}</a></li>
+	<li><a>{{form.filename(class="form-control", placeholder="Name")}}</a></li>
+	<li><a>Location:</a></li>
 	<li><a>{{form.location(class="form-control")}}</a></li>
+	<li><a>Type:</a></li>
+	<li><a>{{form.type(class="form-control")}}</a></li>
 	<li><a class="menuform"><input type="submit" value="Add"></a></li>	
 	</form>
 </li>

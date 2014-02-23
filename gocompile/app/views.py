@@ -1,4 +1,4 @@
-from flask import render_template, flash, redirect, session, url_for, request, g, make_response
+from flask import render_template, flash, redirect, session, url_for, request, g, make_response, jsonify, Response, stream_with_context
 from flask.ext.login import login_user, logout_user, current_user, login_required
 from app import app, db, lm
 from forms import LoginForm, CreateForm, AddForm
@@ -11,8 +11,16 @@ import random
 import datetime
 import settings
 from passlib.hash import sha512_crypt
-import language_loader
+from app import language_loader
+import time
 
+
+def stream_template(template_name, **context):
+    app.update_template_context(context)
+    t = app.jinja_env.get_template(template_name)
+    rv = t.stream(context)
+    rv.enable_buffering(5)
+    return rv
 
 @lm.user_loader
 def load_user(id):
@@ -65,14 +73,16 @@ def recurfolders(user, userpath, iternum):
             }])
     return dirs
 
-def allsubdirectories(path, prefix):
+def allsubdirectories(user, parentpath, prefix):
     available = []
+    path = settings.WORKING_DIR + user.nickname + "/" + parentpath
     for sub in os.listdir(path):
 	subpath = path + "/" + sub
        	if os.path.isdir(subpath) and not sub == ".git":
+	    childpath = parentpath + "/" + sub
 	    display = prefix + sub
-            available.extend([(subpath,display)])
-	    available.extend(allsubdirectories(subpath, prefix + "-"))
+            available.extend([(childpath,display)])
+	    available.extend(allsubdirectories(user, childpath, prefix + "-"))
 
     return available
 
@@ -81,32 +91,41 @@ def menusetup(user):
     form = AddForm()
     available = []
     localrepopath = settings.WORKING_DIR + user.nickname
-    #for root, dirs, files in os.walk(localrepopath, topdown=True):
-	#if '.git' in dirs:
-      	    #dirs.remove('.git')
-    	#for sub in dirs:
-	    #available.extend([(sub,sub)])
     for sub in os.listdir(localrepopath):
 	subpath = localrepopath + "/" + sub
         if os.path.isdir(subpath):
            available.extend([(sub,sub)])
-	   available.extend(allsubdirectories(subpath, "|-"))
+	   available.extend(allsubdirectories(user, sub, "|-"))
     form.location.choices = available
 
+    types = [("None","Other"), ("mkdir","Directory")]
+    languages = Language.query.all()
+    for lang in languages:
+	types.extend([(lang.filetype,"." + lang.filetype)])
+    form.type.choices = types
 
     if form.validate_on_submit():
-	userlocation = form.location.data
+	userlocation = form.location.data	     
 	locationpath = settings.WORKING_DIR + user.nickname + "/" + userlocation
 	if os.path.isdir(locationpath):
 		filepath = locationpath + "/" + form.filename.data
-        	if not os.path.isfile(filepath):
-            	    open(filepath, 'a').close()
-		    repository = userlocation.split("/")[0]
-            	    myrepo = user.repos.filter_by(repourl= "/" + repository + "/" ).first()
-            	    f = File(filename=form.filename.data, path=userlocation, type="txt", repo=myrepo)
+		if form.type.data == "mkdir":
+		    if not os.path.isdir(filepath):
+			p1 = subprocess.Popen(["sudo", "mkdir", filepath])
+                	p1.wait()    
+		else:
+		    if not form.type.data == "None":
+		    	filepath = filepath + "." + form.type.data
+        	    if not os.path.isfile(filepath):
+            	    	open(filepath, 'a').close()
+		    	repository = userlocation.split("/")[0]
+            	    	myrepo = user.repos.filter_by(repourl= "/" + repository + "/" ).first()
+			f = File(filename=form.filename.data, path=userlocation, type="txt", repo=myrepo)
+            	    	if not form.type.data == "None":
+				f = File(filename=form.filename.data + "." + form.type.data, path=userlocation, type="txt", repo=myrepo)
 
-            	    db.session.add(f)
-            	    db.session.commit()
+            	    	db.session.add(f)
+            	    	db.session.commit()
     else: menubutton(user)    	
 
     return form
@@ -125,11 +144,16 @@ def menubutton(user):
                 p1 = subprocess.Popen(["sudo", "git", "pull", "origin", "master"], cwd=settings.WORKING_DIR + user.nickname + "/myRepo/")
                 p1.wait()
 	    if request.form.get('bar', None) == 'Compile':
-		languages = Language.query.all()
-		for lang in languages:
-                    db.session.delete(lang)
-		db.session.commit()
-		language_loader.loadLanguages('plugins')
+		#languages = Language.query.all()
+		#for lang in languages:
+                    #db.session.delete(lang)
+		#db.session.commit()
+		flash(language_loader.loadLanguages('plugins'))
+
+@app.route('/get_values', methods = ['GET', 'POST'])
+@login_required
+def testingrefresh():
+	return jsonify(result="nonsense")
 
 @app.route('/', methods = ['GET', 'POST'])
 @app.route('/index', methods = ['GET', 'POST'])
@@ -140,18 +164,49 @@ def index():
     dirs = getfolders(user)
 	
     dbfiles = user.repos.filter_by().first().files    
-    files = []	
+    files = []
+
+    if request.method == 'POST':
+	    value = request.form.get('remove', None)
+            if value is not None:
+        	name = os.path.split(value)[1]
+        	tail = os.path.split(value)[0]
+		f = File.query.filter_by(filename=name, path=tail).first()
+		if f is not None:
+                	db.session.delete(f)
+                	db.session.commit()
     
     for file in dbfiles:
 	name = file.filename
-	filepath = settings.WORKING_DIR + user.nickname + "/" + file.path + "/" + name
+	path = file.path
+	filepath = settings.WORKING_DIR + user.nickname + "/" + path + "/" + name
 	if os.path.isfile(filepath):
+	    syntax = "javascript"
+	    templist = name.split('.')
+            if len(templist) > 1:
+                type = templist[len(templist) - 1]
+                lang = Language.query.filter_by(filetype=type).first()
+                if lang is not None:
+		    syntax = lang.syntax
 	    text = open(filepath, 'r').read()
-	    files.extend( [
-            { 
-            	'filename': name , 
-            	'content': text 
-            }])
+	    if "/" in path:
+		repository = path.split("/")[0]
+            	relative = path.replace(repository + "/",'')
+	    	files.extend( [
+            	{ 
+            	    'filename': relative + "/" + name ,
+		    'filepath': path + "/" + name, 
+            	    'content': text,
+		    'syntax': syntax 
+            	}])
+	    else:
+		files.extend( [
+                {
+                    'filename': name ,
+                    'filepath': path + "/" + name,
+                    'content': text,
+                    'syntax': syntax
+                }])
 	else:
 	    db.session.delete(file)
 	    db.session.commit()
@@ -184,11 +239,13 @@ def edit(filepath):
 		open(path, 'w').write(request.form['newcontent'])
 	    if request.form.get('btn', None) == 'Delete':
                 f = File.query.filter_by(filename=name).first()
-		db.session.delete(f)
-		db.session.commit()
+		if f is not None:
+			db.session.delete(f)
+			db.session.commit()
 		os.system("sudo rm " + path)
 		return redirect(url_for('index'))
 	    if request.form.get('btn', None) == 'Compile':
+		open(path, 'w').write(request.form['newcontent'])
 		templist = name.split('.')
 		if len(templist) > 1:
 		    type = templist[len(templist) - 1]
@@ -196,6 +253,11 @@ def edit(filepath):
        	 	    if lang is not None:
 			args = lang.compile.split()
 			args.append(path)
+			binary = tail.replace('local','bin')
+			if not os.path.isdir(binary):
+			    os.makedirs(binary)
+			args.append("-d")
+			args.append(binary)
 			#errorfile = open(errorpath, 'w')
 			p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 			p.wait()
@@ -211,8 +273,17 @@ def edit(filepath):
 			    db.session.add(error)
 			db.session.commit()
 			#errorfile.close()	
+	    #if request.form.get('btn', None) == 'Run':
 
-	
+
+	syntax = "javascript"
+        templist = name.split('.')
+        if len(templist) > 1:
+            type = templist[len(templist) - 1]
+            lang = Language.query.filter_by(filetype=type).first()
+            if lang is not None:
+                syntax = lang.syntax
+
 	existing = user.errors.filter_by(path=tail,filename=name).first()
 	if existing is not None:
 	    output = existing.message
@@ -222,19 +293,67 @@ def edit(filepath):
         text = open(path, 'r').read()
 	file = {
             'filename': name ,
-            'content': text
+            'content': text,
+	    'syntax': syntax
         }
-    	return render_template("edit.html",
+    	return Response(render_template("edit.html",
             title = 'Edit',
             user = user,
             form = form,
 	    file = file,
 	    dirs = dirs,
-	    output = output)
+	    output = output))
 
     return redirect(url_for('index'))
 
-	
+
+@app.route('/run', methods = ['GET', 'POST'])
+@login_required
+def run():
+    user = g.user
+    text = "javac " + settings.WORKING_DIR + user.nickname + "/myRepo/hats.java"
+    args = text.split()
+    p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
+    input = "test input"
+    p.stdin.write(input)
+    def inner():
+    #return Response(inner(), mimetype='text/html')
+    	#user = g.user
+    #def output():
+	yield 'Error: <br/>\n'
+	#text = "javac " + settings.WORKING_DIR + user.nickname + "/myRepo/hats.java"
+	#args = text.split()
+	#p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+	#for x in range(100):
+        #    time.sleep(1)
+        #    yield '%s<br/>\n' % x
+
+	#p.wait()
+	#while True:
+	    #line = p.stdout.readline()
+	    #if line == '' and child.poll() != None:
+		#break
+	    #if not input == None:
+             #   yield input + '<br/>\n'
+	for line in iter(p.stdout.readline,''):
+            #time.sleep(1)
+	    if not input == None:
+		yield input + '<br/>\n'
+		#input = None      
+	    if line != '':                 
+            	yield line + '<br/>\n'
+	    #time.sleep(1)
+	#yield 'first part'
+	#yield 'second part'
+	#yield p.stdout.readline
+    #p.communicate(input="testinginput")
+    
+    return Response(inner(), mimetype='text/html')
+    #return Response(output(), mimetype='text/html')
+    #return Response(stream_with_context(output()))
+    #return Response(stream_template('edit.html'))
+    #return Response(output(), direct_passthrough=True)
+    #return Response(output(), mimetype="text/event-stream")	
 
 @app.route('/login', methods = ['GET', 'POST'])
 def login():
@@ -291,21 +410,44 @@ def view(filepath):
 
     files = []
 
+
+    if request.method == 'POST':
+            value = request.form.get('add', None)
+            if value is not None:
+                name = os.path.split(value)[1]
+                tail = os.path.split(value)[0]
+		repository = tail.split("/")[0]
+                myrepo = user.repos.filter_by(repourl= "/" + repository + "/" ).first()
+                f = File(filename=name, path=tail, type="txt", repo=myrepo)
+                if f is not None:
+		    db.session.add(f)
+		    db.session.commit()
+
+
     folderpath = settings.WORKING_DIR + user.nickname + "/" + filepath
     if os.path.isdir(folderpath):
     	for sub in os.listdir(folderpath):
-	    filepath = folderpath + "/" + sub
-            if not os.path.isdir(filepath):
+	    fullpath = folderpath + "/" + sub
+            if not os.path.isdir(fullpath):
 	    	name = sub
-            	text = open(filepath, 'r').read()
+		syntax = "javascript"
+        	templist = name.split('.')
+        	if len(templist) > 1:
+            	    type = templist[len(templist) - 1]
+            	    lang = Language.query.filter_by(filetype=type).first()
+            	    if lang is not None:
+                	syntax = lang.syntax
+            	text = open(fullpath, 'r').read()
             	files.extend( [
             	{
             	    'filename': name ,
-            	    'content': text
+		    'filepath': filepath + "/" + name,
+            	    'content': text,
+		    'syntax': syntax
            	 }])
 
 
-    	return render_template("index.html",
+    	return render_template("view.html",
             title = 'View',
             user = user,
             form = form,

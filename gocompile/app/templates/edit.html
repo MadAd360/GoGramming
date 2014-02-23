@@ -9,6 +9,20 @@ $(document).ready(function(){
 	content: '<button name="btn" value="Delete" type="submit" class="btn btn-default">Yes</button>'+'<button name="btn" class="btn btn-default" onclick="$(&quot;#popover&quot;).popover(&quot;hide&quot;);">No</button>'
 	});
 });
+
+setInterval(                      
+  function()
+  {
+     $.getJSON(                           
+        $SCRIPT_ROOT + '/get_values',     
+        {},                               
+        function(data)                    
+        {
+          $("#result").text(data.result); 
+                                          
+       });
+  },
+  500);
 </script>
 
 {% endblock %}
@@ -22,6 +36,7 @@ $(document).ready(function(){
     <div class="btn-group pull-right">
   <button name="btn" value="Save" type="submit" class="btn btn-default">Save</button>
   <button name="btn" value="Compile" type="submit" class="btn btn-default">Compile</button>
+<a type="button" href="{{url_for('run')}}" class="btn btn-default">Run</a>
   <a id="popover" class="btn btn-default" data-toggle="popover" title="Are you sure?" >Delete</a>
 </div>
 </div>
@@ -34,7 +49,7 @@ $(document).ready(function(){
 <script>
 var cm = CodeMirror.fromTextArea(document.getElementById("code"), {
     matchBrackets: true,
-    mode: "text/javascript",
+    mode: "{{file.syntax}}",
     theme: "go-theme",
     lineNumbers: true
   });
@@ -47,4 +62,5 @@ cm.on('change', function(){
 </div>
 </form>
 <pre class="pre-scrollable">{{output}}</pre>
+<pre id="result" class="pre-scrollable">testing</pre>
 {% endblock %}

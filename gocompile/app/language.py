@@ -14,5 +14,9 @@ class Language(object):
         #This should return a string which will run the code
         raise NotImplementedError("Not implemented")
 
+    def getSyntax(self):
+        #This should return a string which will call the correct CodeMirror highlighting
+        raise NotImplementedError("Not implemented")
+
     def __str__(self):
         return "%s" % (self.type)
