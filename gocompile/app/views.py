@@ -154,13 +154,6 @@ def menubutton(user):
 		#db.session.commit()
 		flash(language_loader.loadLanguages('plugins'))
 
-@app.route('/get_values', methods = ['GET', 'POST'])
-@login_required
-def testingrefresh():
-	global process
-	global textvar
-	#process.stdin.write("testing")
-	return jsonify(result=testvar)
 
 @app.route('/', methods = ['GET', 'POST'])
 @app.route('/index', methods = ['GET', 'POST'])
@@ -313,6 +306,12 @@ def edit(filepath):
 
     return redirect(url_for('index'))
 
+def inner():
+        yield 'Error: \n'
+        for line in iter(process.stdout.readline,''):
+            time.sleep(5)
+            if line != '':
+                yield line
 
 @app.route('/run', methods = ['GET', 'POST'])
 @login_required
@@ -334,20 +333,20 @@ def run():
         for i, c in enumerate("hello"*10):
             time.sleep(.1)  # an artificial delay
             yield i, c
-    def inner():
+    #def inner():
     #return Response(inner(), mimetype='text/html')
-	yield 'Error: \n'
+	#yield 'Error: \n'
 	    #if line == '' and child.poll() != None:
 		#break
 	    #if not input == None:
              #   yield input + '<br/>\n'
-	for line in iter(process.stdout.readline,''):
-            time.sleep(5)
+	#for line in iter(process.stdout.readline,''):
+            #time.sleep(5)
 	    #if not input == None:
 		#yield input
 		#input = None      
-	    if line != '':                 
-            	yield line
+	    #if line != '':                 
+            	#yield line
 	    #time.sleep(1)
 	#yield 'first part'
 	#yield 'second part'
@@ -358,10 +357,19 @@ def run():
     #return Response(tmpl.generate(output="test", title='Run'))
     #return Response(inner(), mimetype='text/html')
     #return Response(stream_with_context(output()))
-    return Response(stream_template('run.html', output=inner(), title='Run'))
+    temp = inner()
+    return Response(stream_template('run.html', output=temp, title='Run'))
     #return Response(stream_template('run.html', title='Run'))
     #return Response(output(), direct_passthrough=True)
     #return Response(output(), mimetype="text/event-stream")	
+
+@app.route('/get_values', methods = ['GET'])
+@login_required
+def testingrefresh():
+        global process
+        global textvar
+        #process.stdin.write("testing")
+        return jsonify(result=testvar)
 
 @app.route('/login', methods = ['GET', 'POST'])
 def login():
