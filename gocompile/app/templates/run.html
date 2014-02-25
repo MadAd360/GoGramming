@@ -1,0 +1,77 @@
+<!-- extend from base layout --> {% extends "base.html" %}
+
+{% block main %}
+
+<style type="text/css">
+html {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  min-width: 100%;
+  min-height: 100%;
+}
+
+body {
+  height: 100%;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+}
+
+.container{
+  height:100%;
+  display:table;
+  width: 100%;
+  padding: 0;
+}
+
+.row-fluid {height: 100%; display:table-cell; vertical-align: middle;}
+
+.outputline{
+  white-space: pre;
+}
+</style>
+
+{% endblock %}
+
+
+{% block content %}
+<div class="row-fluid">
+<div class="panel panel-default span7 col-md-4 col-md-offset-4">
+  <div class="panel-body">
+
+
+
+<pre id="result">update </pre>
+<button id="input" >Click me</button>
+
+<script type="text/javascript">
+
+$("#input").click(
+  function(e)
+  {
+	e.preventDefault();
+
+$.getJSON(
+        $SCRIPT_ROOT + '/get_values',
+        {},
+        function(data)
+        {
+          $("#result").text(data.result);
+
+       });
+
+  });
+</script>
+
+
+{% for line in output %}
+<div class="outputline">{{line}}</div>
+{% endfor %}
+
+<p>
+</p>
+</div>  
+</div>
+</div>
+{% endblock %}

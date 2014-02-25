@@ -14,12 +14,16 @@ from passlib.hash import sha512_crypt
 from app import language_loader
 import time
 
+from flask.ext.socketio import SocketIO, emit
+
+process = None
+testvar = "failed"
 
 def stream_template(template_name, **context):
     app.update_template_context(context)
     t = app.jinja_env.get_template(template_name)
     rv = t.stream(context)
-    rv.enable_buffering(5)
+    #rv.enable_buffering(5)
     return rv
 
 @lm.user_loader
@@ -153,7 +157,10 @@ def menubutton(user):
 @app.route('/get_values', methods = ['GET', 'POST'])
 @login_required
 def testingrefresh():
-	return jsonify(result="nonsense")
+	global process
+	global textvar
+	#process.stdin.write("testing")
+	return jsonify(result=testvar)
 
 @app.route('/', methods = ['GET', 'POST'])
 @app.route('/index', methods = ['GET', 'POST'])
@@ -310,48 +317,49 @@ def edit(filepath):
 @app.route('/run', methods = ['GET', 'POST'])
 @login_required
 def run():
+    global process
+    global testvar
+    testvar = "success"
     user = g.user
-    text = "javac " + settings.WORKING_DIR + user.nickname + "/myRepo/hats.java"
+    location = settings.WORKING_DIR + user.nickname + "/myRepo/"
+    #text = "java runTest"
+    text = "javac "+ settings.WORKING_DIR + user.nickname + "/myRepo/hats.java"
+    location = location.replace('local','bin')
     args = text.split()
-    p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
+    #process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE, cwd=location)
+    process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
     input = "test input"
-    p.stdin.write(input)
+    process.stdin.write(input)
+    def test():
+        for i, c in enumerate("hello"*10):
+            time.sleep(.1)  # an artificial delay
+            yield i, c
     def inner():
     #return Response(inner(), mimetype='text/html')
-    	#user = g.user
-    #def output():
-	yield 'Error: <br/>\n'
-	#text = "javac " + settings.WORKING_DIR + user.nickname + "/myRepo/hats.java"
-	#args = text.split()
-	#p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-	#for x in range(100):
-        #    time.sleep(1)
-        #    yield '%s<br/>\n' % x
-
-	#p.wait()
-	#while True:
-	    #line = p.stdout.readline()
+	yield 'Error: \n'
 	    #if line == '' and child.poll() != None:
 		#break
 	    #if not input == None:
              #   yield input + '<br/>\n'
-	for line in iter(p.stdout.readline,''):
-            #time.sleep(1)
-	    if not input == None:
-		yield input + '<br/>\n'
+	for line in iter(process.stdout.readline,''):
+            time.sleep(5)
+	    #if not input == None:
+		#yield input
 		#input = None      
 	    if line != '':                 
-            	yield line + '<br/>\n'
+            	yield line
 	    #time.sleep(1)
 	#yield 'first part'
 	#yield 'second part'
 	#yield p.stdout.readline
     #p.communicate(input="testinginput")
-    
-    return Response(inner(), mimetype='text/html')
-    #return Response(output(), mimetype='text/html')
+    #env = Environment(loader=FileSystemLoader('templates'))
+    #tmpl = env.get_template('run.html')    
+    #return Response(tmpl.generate(output="test", title='Run'))
+    #return Response(inner(), mimetype='text/html')
     #return Response(stream_with_context(output()))
-    #return Response(stream_template('edit.html'))
+    return Response(stream_template('run.html', output=inner(), title='Run'))
+    #return Response(stream_template('run.html', title='Run'))
     #return Response(output(), direct_passthrough=True)
     #return Response(output(), mimetype="text/event-stream")	
 
