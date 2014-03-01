@@ -7,6 +7,8 @@ import os
 import crypt
 from dulwich.repo import Repo
 import subprocess
+from fcntl import fcntl, F_GETFL, F_SETFL
+from os import O_NONBLOCK, read
 import random
 import datetime
 import settings
@@ -14,10 +16,10 @@ from passlib.hash import sha512_crypt
 from app import language_loader
 import time
 
-from flask.ext.socketio import SocketIO, emit
 
 process = None
-testvar = "failed"
+testvar = []
+
 
 def stream_template(template_name, **context):
     app.update_template_context(context)
@@ -306,29 +308,41 @@ def edit(filepath):
 
     return redirect(url_for('index'))
 
-def inner():
-        yield 'Error: \n'
-        for line in iter(process.stdout.readline,''):
-            time.sleep(5)
-            if line != '':
-                yield line
+def inner(proc):
+    	flags = fcntl(proc.stdout, F_GETFL)
+        fcntl(proc.stdout, F_SETFL, flags | O_NONBLOCK)
+        #yield 'Error: \n'
+        while True:
+	    #time.sleep(1)
+	    try:
+        	yield read(process.stdout.fileno(), 1024),
+    	    except OSError:
+        # the os throws an exception if there is no data
+            	yield ''
+            	#break
+	#for line in iter(process.stdout.readline,''):
+            #time.sleep(5)
+            #if line != '':
+                #yield line
 
 @app.route('/run', methods = ['GET', 'POST'])
 @login_required
 def run():
     global process
     global testvar
-    testvar = "success"
+    testvar = []
     user = g.user
     location = settings.WORKING_DIR + user.nickname + "/myRepo/"
-    #text = "java runTest"
-    text = "javac "+ settings.WORKING_DIR + user.nickname + "/myRepo/hats.java"
+    text = "java runTest"
+    #text = "javac "+ settings.WORKING_DIR + user.nickname + "/myRepo/hats.java"
     location = location.replace('local','bin')
     args = text.split()
-    #process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE, cwd=location)
-    process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
-    input = "test input"
-    process.stdin.write(input)
+    process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE, cwd=location)
+    #process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
+    #input = "test input"
+
+    #process.stdin.write(input)
+    #process.stdin.flush()
     def test():
         for i, c in enumerate("hello"*10):
             time.sleep(.1)  # an artificial delay
@@ -357,19 +371,56 @@ def run():
     #return Response(tmpl.generate(output="test", title='Run'))
     #return Response(inner(), mimetype='text/html')
     #return Response(stream_with_context(output()))
-    temp = inner()
-    return Response(stream_template('run.html', output=temp, title='Run'))
+    #g.run = inner(process)
+    obj = type('obj', (object,), {'name' : g.user.nickname,  'out': inner(process)})
+    testvar.append(obj)
+    #testvar = inner(process)
+    #session['run'] = inner(process)
+    return Response(stream_template('run.html', title='Run'))
+    #return Response(stream_template('run.html', output=temp, title='Run'))
     #return Response(stream_template('run.html', title='Run'))
     #return Response(output(), direct_passthrough=True)
     #return Response(output(), mimetype="text/event-stream")	
 
-@app.route('/get_values', methods = ['GET'])
+@app.route('/kill_process', methods = ['GET'])
 @login_required
-def testingrefresh():
+def killProcess():
         global process
-        global textvar
+        global testvar
+	process.terminate()
         #process.stdin.write("testing")
-        return jsonify(result=testvar)
+        return jsonify(result="Refresh")
+
+@app.route('/get_input/<path:newInput>', methods = ['GET'])
+@login_required
+def inputrefresh(newInput):
+        global process
+        global testvar
+        process.stdin.write(newInput + "\n")
+	#process.stdin.flush()
+        return jsonify(result="Refresh")
+
+
+@app.route('/get_output', methods = ['GET', 'POST'])
+@login_required
+def outputrefresh():
+        #global process
+        global testvar
+        #process.stdin.write("testing")
+	#temp = list(inner())
+	#text = ''.join(temp)
+        #return Response(inner(), mimetype='text/html')
+        try:
+	    for gen in testvar:
+		if gen.name == g.user.nickname:
+		    line = next(gen.out)
+		    if line == '':
+			return None
+	    	    return jsonify(result=line)
+       	    return None
+	except StopIteration:
+	    return None
+	    #return jsonify(result='')
 
 @app.route('/login', methods = ['GET', 'POST'])
 def login():

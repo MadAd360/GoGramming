@@ -10,19 +10,6 @@ $(document).ready(function(){
 	});
 });
 
-setInterval(                      
-  function()
-  {
-     $.getJSON(                           
-        $SCRIPT_ROOT + '/get_values',     
-        {},                               
-        function(data)                    
-        {
-          $("#result").text(data.result); 
-                                          
-       });
-  },
-  500);
 </script>
 
 {% endblock %}
@@ -62,5 +49,4 @@ cm.on('change', function(){
 </div>
 </form>
 <pre class="pre-scrollable">{{output}}</pre>
-<pre id="result" class="pre-scrollable">testing</pre>
 {% endblock %}

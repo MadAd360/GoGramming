@@ -2,24 +2,21 @@
 
 {% block main %}
 <script type="text/javascript">
-  setInterval(
-    function()
-    { 
-       var p = $.getJSON(
-          $SCRIPT_ROOT + '/get_output',
-          {},
-          function(data)
-          {
-            if(data.result != null)
-	        var current = $("#output").text()
-                $("#output").text(current + data.result);
 
-         });
+setInterval(
+  function()
+  {
+     $.getJSON(
+        $SCRIPT_ROOT + '/get_output',
+        {},
+        function(data)
+        {
+          if(data.result != '')
+              $("#output").text(data.result);
 
-	setTimeout(function(){p.abort()},2000);
-
-    },
-    2000);
+       });
+  },
+  500);
 </script>
 
 
@@ -65,49 +62,30 @@ body {
 
 
 <pre id="result">update </pre>
-
-<button id="update" >Input</button>
-<button id="kill" class="pull-right">Kill</button>
-
-<textarea id="input" class="form-control" rows="3"></textarea>
+<button id="input" >Click me</button>
 
 
 <script type="text/javascript">
 
-$("#update").click(
+$("#input").click(
   function(e)
   {
         e.preventDefault();
 
 $.getJSON(
-        $SCRIPT_ROOT + '/get_input/' + $("#input").val(),
+        $SCRIPT_ROOT + '/get_values',
         {},
         function(data)
         {
           $("#result").text(data.result);
-	  $("#input").text('');
-       });
 
-  });
-
-
-$("#kill").click(
-  function(e)
-  {
-        e.preventDefault();
-
-$.getJSON(
-        $SCRIPT_ROOT + '/kill_process',
-        {},
-        function()
-        {
        });
 
   });
 </script>
 
 
-<div id="output" class="outputline"></div>
+<div id="output" class="outputline">Not Updated</div>
 
 
 
