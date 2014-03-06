@@ -5,8 +5,10 @@
   setInterval(
     function()
     { 
+       $.ajaxSetup({ cache: false });
+       var encoded = encodeURIComponent('/get_output/{{processid}}');
        var p = $.getJSON(
-          $SCRIPT_ROOT + '/get_output',
+          $SCRIPT_ROOT + encoded,
           {},
           function(data)
           {
@@ -63,13 +65,12 @@ body {
   <div class="panel-body">
 
 
-
-<pre id="result">update </pre>
-
-<button id="update" >Input</button>
-<button id="kill" class="pull-right">Kill</button>
-
 <textarea id="input" class="form-control" rows="3"></textarea>
+
+
+<button id="update" class="btn btn-default" >Input</button>
+<button id="kill" class="btn btn-default pull-right">Kill</button>
+
 
 
 <script type="text/javascript">
@@ -79,13 +80,14 @@ $("#update").click(
   {
         e.preventDefault();
 
-$.getJSON(
-        $SCRIPT_ROOT + '/get_input/' + $("#input").val(),
+       $.ajaxSetup({ cache: false });
+       var encoded = encodeURIComponent('/get_input/{{processid}}/' + $("#input").val());
+       $.getJSON(
+        $SCRIPT_ROOT + encoded,
         {},
-        function(data)
+        function()
         {
-          $("#result").text(data.result);
-	  $("#input").text('');
+	  $("#input").val('');
        });
 
   });
@@ -96,8 +98,10 @@ $("#kill").click(
   {
         e.preventDefault();
 
-$.getJSON(
-        $SCRIPT_ROOT + '/kill_process',
+       $.ajaxSetup({ cache: false });
+       var encoded = encodeURIComponent('/kill_process/{{processid}}');
+       $.getJSON( 
+        $SCRIPT_ROOT + encoded,
         {},
         function()
         {
@@ -107,7 +111,7 @@ $.getJSON(
 </script>
 
 
-<div id="output" class="outputline"></div>
+<pre id="output" class="outputline"></pre>
 
 
 

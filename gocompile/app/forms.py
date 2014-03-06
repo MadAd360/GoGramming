@@ -53,6 +53,9 @@ class CreateForm(Form):
         if user is not None:
             self.username.errors.append('Username already in use')
             return False
+	if ("/" in self.username.data) or ("\\" in self.username.data):
+	    self.username.errors.append('Username must not contain slashes')
+            return False 
 
 	user = User.query.filter_by(email=self.email.data).first()
         if user is not None:
@@ -67,4 +70,5 @@ class AddForm(Form):
     location = SelectField('location')
     type = SelectField('type')
 	
-
+class ShareForm(Form):
+    user = TextField('user', validators = [Required()])

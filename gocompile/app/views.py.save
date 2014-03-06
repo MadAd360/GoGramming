@@ -1,7 +1,7 @@
 from flask import render_template, flash, redirect, session, url_for, request, g, make_response, jsonify, Response, stream_with_context
 from flask.ext.login import login_user, logout_user, current_user, login_required
 from app import app, db, lm
-from forms import LoginForm, CreateForm, AddForm, ShareForm
+from forms import LoginForm, CreateForm, AddForm
 from models import User, Post, Rpstry, File, Language, Error, ROLE_USER, ROLE_ADMIN
 import os
 import crypt
@@ -15,8 +15,7 @@ import settings
 from passlib.hash import sha512_crypt
 from app import language_loader
 import time
-from plugins import *
-import re
+
 
 process = []
 
@@ -135,70 +134,15 @@ def menusetup(user):
     else: menubutton(user)    	
 
     cleanprocess()
+
     return form
-
-def sharesetup(user):
-    form = ShareForm()
-    if form.validate_on_submit():
-    	shareuser = form.user.data
-    	sharepath = settings.WORKING_DIR + shareuser
-	shareuserdb = User.query.filter_by(nickname=shareuser).first()
-    	sharedname = user.nickname + "Repo"
-    
-    	currentRepo = shareuserdb.repos.filter_by(repourl="/" + sharedname + "/").first()
-    	if currentRepo is None:
-	    existing = False
-    	    for sub in os.listdir(sharepath):
-	        if sub == sharedname:
-	    	    existing = True
-    	    if not existing:
-	    	repo = Repo(settings.REMOTE_DIR + user.nickname)
-	    	os.system("sudo mkdir " + sharepath + "/" + sharedname)
-		working_repo = repo.clone(sharepath + "/" + sharedname , False, False, "origin")
-            	p = subprocess.Popen(["sudo", "git", "remote", "add", "origin", "file:///" + settings.REMOTE_DIR + user.nickname + "/"], cwd=sharepath + "/" + sharedname)
-	    	p.wait()
-	    newrepo = Rpstry(repourl="/" + sharedname + "/", owner=shareuserdb)
-            db.session.add(newrepo)
-            db.session.commit()
-
-	    password = ''
-	    searchfile = open(settings.REMOTE_DIR + shareuser + "/.htpasswd", "r")
-	    for line in searchfile:
-		exactuser = re.compile("^" + shareuser + ":(.)*$")
-                if exactuser.match(line):
-   	            password = line
-	    searchfile.close()
-            open(settings.REMOTE_DIR + user.nickname + "/.htpasswd", 'a').writelines(password)
-            flash("Share")
-	else:
-	    flash("Unshare")
-	    searchfile = open(settings.REMOTE_DIR + user.nickname + "/.htpasswd", "r")
-	    lines = searchfile.readlines()
-	    searchfile.close()
-	    f = open(settings.REMOTE_DIR + user.nickname + "/.htpasswd","w")
-	    for line in lines:
-		flash(line)
-		exactuser = re.compile("^" + shareuser + ":(.)*$")
-		if not exactuser.match(line):
-                    #password = line
-	            flash("in")
-		    f.write(line)
-	    f.close()
-	    #f = open(settings.REMOTE_DIR + user.nickname + "/.htpasswd","w")
-	    #for line in lines:
-  		#if line!=password:
-    		    #f.write(line)
-	    db.session.delete(currentRepo)
-	    db.session.commit()
-    return form
-
 
 def cleanprocess():
     global process
     current = datetime.datetime.now()
     for gen in process:
 	temptime = current - gen.access
-	if temptime.seconds > 10:
+	if temptime.seconds > 20:
 	    gen.proc.terminate()
 	    process.remove(gen)
 
@@ -216,13 +160,10 @@ def menubutton(user):
                 p1 = subprocess.Popen(["sudo", "git", "pull", "origin", "master"], cwd=settings.WORKING_DIR + user.nickname + "/myRepo/")
                 p1.wait()
 	    if request.form.get('bar', None) == 'Compile':
-		languages = Language.query.all()
-		for lang in languages:
-                    db.session.delete(lang)
-		db.session.commit()
-		#p1 = subprocess.Popen(["sudo", "rm", "*.pyc"], cwd="../plugins/")
-		#p1.wait()
-		#flash("check")
+		#languages = Language.query.all()
+		#for lang in languages:
+                    #db.session.delete(lang)
+		#db.session.commit()
 		flash(language_loader.loadLanguages('plugins'))
 
 
@@ -233,7 +174,6 @@ def index():
     user = g.user
     form = menusetup(user)
     dirs = getfolders(user)
-    shareform = sharesetup(user)
 	
     dbfiles = user.repos.filter_by().first().files    
     files = []
@@ -287,10 +227,8 @@ def index():
         title = 'Home',
         user = user,
 	form = form,
-   	shareform = shareform,
 	dirs =  dirs,
-	files = files,
-	heading = 'Favourites')
+	files = files)
 
 
 @app.route('/edit/<path:filepath>', methods = ['GET', 'POST'])
@@ -299,7 +237,6 @@ def edit(filepath):
     user = g.user
     form =  menusetup(user)
     dirs = getfolders(user)
-    shareform = sharesetup(user)
 
     path = settings.WORKING_DIR + user.nickname + "/" + filepath	
     
@@ -371,15 +308,13 @@ def edit(filepath):
             'content': text,
 	    'syntax': syntax
         }
-    	return render_template("edit.html",
+    	return Response(render_template("edit.html",
             title = 'Edit',
             user = user,
             form = form,
-	    shareform = shareform,
 	    file = file,
 	    dirs = dirs,
-	    output = output,
-	    heading = filepath)
+	    output = output))
 
     return redirect(url_for('index'))
 
@@ -405,6 +340,7 @@ def inner(proc):
 def run():
     global process
     global testvar
+    process = []
     user = g.user
     location = settings.WORKING_DIR + user.nickname + "/myRepo/"
     text = "java runTest"
@@ -413,18 +349,7 @@ def run():
     args = text.split()
     p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE, cwd=location)
     time = datetime.datetime.now()
-    id = 1
-    unique = False
-    fullid = fullid = "" + g.user.nickname + str(id)
-    while not unique:
-	unique = True
-    	for gen in process:
-            if gen.name == fullid:
-		id = id + 1
-	    	fullid = "" + g.user.nickname + str(id)
-		unique = False
-    fullid = str(fullid)
-    procobj = type(fullid, (object,), {'name' : fullid,  'out': inner(p), 'proc': p, 'access': time})
+    procobj = type('obj', (object,), {'name' : user.nickname,  'out': inner(p), 'proc': p, 'access': time})
     process.append(procobj)
     #process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
     #input = "test input"
@@ -447,40 +372,45 @@ def run():
 	#yield 'first part'
 	#yield 'second part'
 	#yield p.stdout.readline
-    return Response(render_template('run.html', title='Run', processid=fullid))
+    #testvar = inner(process)
+    #session['run'] = inner(process)
+    return Response(stream_template('run.html', title='Run', processid='Testid'))
+    #return Response(stream_template('run.html', output=temp, title='Run'))
     #return Response(stream_template('run.html', title='Run'))
+    #return Response(output(), direct_passthrough=True)
+    #return Response(output(), mimetype="text/event-stream")	
 
-@app.route('/kill_process/<processid>', methods = ['GET'])
+@app.route('/kill_process', methods = ['GET'])
 @login_required
-def killProcess(processid):
+def killProcess():
         global process
 	try:
             for gen in process:
-                if gen.name == processid:
+                if gen.name == g.user.nickname:
 		    gen.proc.terminate()
 		    process.remove(gen)
         except StopIteration:
 	    pass
 
-@app.route('/get_input/<processid>/<path:newInput>', methods = ['GET'])
+@app.route('/get_input/<newInput>', methods = ['GET'])
 @login_required
-def inputrefresh(processid, newInput):
+def inputrefresh(newInput):
         global process
 	try:
             for gen in process:
-                if gen.name == processid:
+                if gen.name == g.user.nickname:
 		    gen.proc.stdin.write(newInput + "\n")
 		    return jsonify(result="Refresh")
         except StopIteration:
 	    pass
 
-@app.route('/get_output/<processid>', methods = ['GET', 'POST'])
+@app.route('/get_output', methods = ['GET', 'POST'])
 @login_required
-def outputrefresh(processid):
+def outputrefresh():
         global process
         try:
 	    for gen in process:
-		if gen.name == processid:
+		if gen.name == g.user.nickname:
 		    gen.access = datetime.datetime.now()
 		    line = next(gen.out)
 	    	    if line is not None:
@@ -504,7 +434,7 @@ def login():
 @app.route('/logout')
 def logout():
     logout_user()
-    return redirect(url_for('login'))
+    return redirect(url_for('index'))
 
 @app.route('/create', methods = ['GET', 'POST'])
 def create():
@@ -541,7 +471,6 @@ def view(filepath):
     user = g.user
     form = menusetup(user)
     dirs = getfolders(user)
-    shareform = sharesetup(user)
 
     files = []
 
@@ -586,9 +515,7 @@ def view(filepath):
             title = 'View',
             user = user,
             form = form,
-	    shareform = shareform,
             dirs =  dirs,
-            files = files,
-	    heading = filepath)
+            files = files)
 
     return redirect(url_for('index'))

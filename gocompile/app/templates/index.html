@@ -1,5 +1,6 @@
 {% extends "menubar.html" %}
 
+
 {% block within %}
     {% for file in files %}
 <form action="" method="post" name="login">
@@ -28,6 +29,7 @@
     	lineNumbers: true,
     	readOnly: true
     });
+    cm.setSize(null, 300);
     var savearea = $('textarea[name="newcontent"]').hide();
 	cm.on('change', function(){
         cm.save();

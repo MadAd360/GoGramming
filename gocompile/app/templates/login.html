@@ -36,6 +36,7 @@ body {
   <div class="panel-body">
 <a class="navbar-brand" href="{{ url_for('index') }}"><img src="{{ url_for('static', filename = 'images/go.png') }}" class="img-responsive" alt="Responsive image" border="0"></a>
 <h1>Sign In</h1>
+
 <form role="form" action="" method="post" name="login">
     {{form.hidden_tag()}}
   <div class="form-group">
@@ -44,6 +45,20 @@ body {
   <div class="form-group">
 {{ form.password( class=" form-control", placeholder="Password") }}
   </div>
+
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    <ul>
+    {% for message in messages %}
+	<div class="alert alert-warning alert-dismissable">
+  	    <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+  	    <strong>Hold On!</strong> {{ message }}
+	</div>        
+    {% endfor %}
+    </ul>
+    {% endif %}
+    {% endwith %}
+
 	{% for error in form.errors.username %}
             <span style="color: red;">[{{error}}]</span>
         {% endfor %}

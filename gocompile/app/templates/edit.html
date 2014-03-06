@@ -40,6 +40,7 @@ var cm = CodeMirror.fromTextArea(document.getElementById("code"), {
     theme: "go-theme",
     lineNumbers: true
   });
+cm.setSize(null,600);
 var savearea = $('textarea[name="newcontent"]').hide();
 cm.on('change', function(){
 	cm.save();
