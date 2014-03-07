@@ -80,19 +80,39 @@ word-wrap:break-word;
 	</form>
 </li>
 
-<form class="navbar-form navbar-left" action="" method="post" name="commit">
-<div class="form-group">	
-<button class="btn btn-default" name="bar" value="Commit" type="submit">Commit</button>
-</div>
-</form>
+<li class="dropdown">
+<a href="#" class="dropdown-toggle" data-toggle="dropdown">Commit<b class="caret"></b></a>
+        <form class="dropdown-menu" action="" method="post" name="commitfile">
+        {{form.hidden_tag()}}
 
-<form class="navbar-form navbar-left" action="" method="post" name="push">
-  <button class="btn btn-default" name="bar" value="Push" type="submit" >Push</button>
-</form>
+        <li><a>Repository:</a></li>
+        <li><a>{{commitform.repos(class="form-control")}}</a></li>
+        <li><a><input type="submit" value="Commit"></a></li>
+        </form>
+</li>
 
-<form class="navbar-form navbar-left" action="" method="post" name="pull">  
-    <button class="btn btn-default" name="bar" value="Pull" type="submit" >Pull</button>
-</form>
+<li class="dropdown">
+<a href="#" class="dropdown-toggle" data-toggle="dropdown">Push<b class="caret"></b></a>
+        <form class="dropdown-menu" action="" method="post" name="pushfile">
+        {{form.hidden_tag()}}
+
+        <li><a>Repository:</a></li>
+        <li><a>{{pushform.repos(class="form-control")}}</a></li>
+        <li><a><input type="submit" value="Push"></a></li>
+        </form>
+</li>
+
+<li class="dropdown">
+<a href="#" class="dropdown-toggle" data-toggle="dropdown">Pull<b class="caret"></b></a>
+        <form class="dropdown-menu" action="" method="post" name="pullfile">
+        {{form.hidden_tag()}}
+
+        <li><a>Repository:</a></li>
+        <li><a>{{pullform.repos(class="form-control")}}</a></li>
+        <li><a><input type="submit" value="Pull"></a></li>
+        </form>
+</li>
+
 
 <li class="dropdown">
 <a href="#" class="dropdown-toggle" data-toggle="dropdown">Share<b class="caret"></b></a>

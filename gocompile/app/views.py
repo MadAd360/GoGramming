@@ -1,7 +1,7 @@
 from flask import render_template, flash, redirect, session, url_for, request, g, make_response, jsonify, Response, stream_with_context
 from flask.ext.login import login_user, logout_user, current_user, login_required
 from app import app, db, lm
-from forms import LoginForm, CreateForm, AddForm, ShareForm
+from forms import LoginForm, CreateForm, AddForm, ShareForm, CommitForm, PushForm, PullForm
 from models import User, Post, Rpstry, File, Language, Error, ROLE_USER, ROLE_ADMIN
 import os
 import crypt
@@ -184,13 +184,53 @@ def sharesetup(user):
 	            flash("in")
 		    f.write(line)
 	    f.close()
-	    #f = open(settings.REMOTE_DIR + user.nickname + "/.htpasswd","w")
-	    #for line in lines:
-  		#if line!=password:
-    		    #f.write(line)
 	    db.session.delete(currentRepo)
 	    db.session.commit()
     return form
+
+
+def commitsetup(user):
+    form = CommitForm()
+    repos = []
+    for rpstry in user.repos.all():
+	reponame = rpstry.repourl
+	displayname = reponame.replace("/",'')
+	repos.extend([(reponame,displayname)])
+    form.repos.choices = repos
+    if form.validate_on_submit():
+        repo = form.repos.data
+    	p1 = subprocess.Popen(["sudo", "git", "add", "-A"], cwd=settings.WORKING_DIR + user.nickname + reponame)
+    	p1.wait()
+    	working_repo = Repo(settings.WORKING_DIR + user.nickname + reponame)
+    	working_repo.do_commit("Test commit", committer=user.nickname + "<" + user.email + ">")
+    return form
+
+def pullsetup(user):
+    form = PullForm()
+    repos = []
+    for rpstry in user.repos.all():
+        reponame = rpstry.repourl
+        displayname = reponame.replace("/",'')
+        repos.extend([(reponame,displayname)])
+    form.repos.choices = repos
+    if form.validate_on_submit():
+	p1 = subprocess.Popen(["sudo", "git", "pull", "origin", "master"], cwd=settings.WORKING_DIR + user.nickname + reponame)
+	p1.wait()
+    return form
+
+def pushsetup(user):
+    form = PushForm()
+    repos = []
+    for rpstry in user.repos.all():
+        reponame = rpstry.repourl
+        displayname = reponame.replace("/",'')
+        repos.extend([(reponame,displayname)])
+    form.repos.choices = repos
+    if form.validate_on_submit():
+        p1 = subprocess.Popen(["sudo", "git", "push", "origin", "master"], cwd=settings.WORKING_DIR + user.nickname + reponame)
+        p1.wait()
+    return form
+
 
 
 def cleanprocess():
@@ -201,6 +241,26 @@ def cleanprocess():
 	if temptime.seconds > 10:
 	    gen.proc.terminate()
 	    process.remove(gen)
+
+
+def getrepos(user, activerepo):
+    repos = []
+    for rpstry in user.repos.all():
+	reponame = rpstry.repourl.replace("/",'')
+	if reponame == activerepo:
+	    repos.extend( [
+                {
+                    'reponame': reponame,
+                    'active': True
+                }])
+	else:
+	    repos.extend( [
+                {
+                    'reponame': reponame,
+                    'active': False
+                }])
+    return repos
+
 
 def menubutton(user):
         if request.method == 'POST':
@@ -227,15 +287,21 @@ def menubutton(user):
 
 
 @app.route('/', methods = ['GET', 'POST'])
-@app.route('/index', methods = ['GET', 'POST'])
+@app.route('/index/', methods = ['GET', 'POST'])
+@app.route('/index/<activerepo>', methods = ['GET', 'POST'])
 @login_required
-def index():
+def index(activerepo=None):
     user = g.user
     form = menusetup(user)
     dirs = getfolders(user)
     shareform = sharesetup(user)
+    commitform = commitsetup(user)
+    pushform = pushsetup(user)
+    pullform = pullsetup(user)
+    if activerepo is None:
+	activerepo = "myRepo"
 	
-    dbfiles = user.repos.filter_by().first().files    
+    dbfiles = user.repos.filter_by(repourl="/"+activerepo+"/").first().files    
     files = []
 
     if request.method == 'POST':
@@ -288,8 +354,12 @@ def index():
         user = user,
 	form = form,
    	shareform = shareform,
+	commitform = commitform,
+	pushform = pushform,
+	pullform = pullform,
 	dirs =  dirs,
 	files = files,
+	repos = getrepos(user, activerepo),
 	heading = 'Favourites')
 
 
@@ -300,6 +370,9 @@ def edit(filepath):
     form =  menusetup(user)
     dirs = getfolders(user)
     shareform = sharesetup(user)
+    commitform = commitsetup(user)
+    pushform = pushsetup(user)
+    pullform = pullsetup(user)
 
     path = settings.WORKING_DIR + user.nickname + "/" + filepath	
     
@@ -331,7 +404,9 @@ def edit(filepath):
 			binary = tail.replace('local','bin')
 			if not os.path.isdir(binary):
 			    os.makedirs(binary)
-			args.append("-d")
+			if lang.file:
+			    binary = binary + "/" + templist[0]
+			args.append(lang.location)
 			args.append(binary)
 			#errorfile = open(errorpath, 'w')
 			p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -368,6 +443,7 @@ def edit(filepath):
         text = open(path, 'r').read()
 	file = {
             'filename': name ,
+	    'filepath': filepath,
             'content': text,
 	    'syntax': syntax
         }
@@ -376,6 +452,9 @@ def edit(filepath):
             user = user,
             form = form,
 	    shareform = shareform,
+            commitform = commitform,
+            pushform = pushform,
+            pullform = pullform,
 	    file = file,
 	    dirs = dirs,
 	    output = output,
@@ -400,11 +479,10 @@ def inner(proc):
             #if line != '':
                 #yield line
 
-@app.route('/run', methods = ['GET', 'POST'])
+@app.route('/run/', methods = ['GET', 'POST'])
 @login_required
 def run():
     global process
-    global testvar
     user = g.user
     location = settings.WORKING_DIR + user.nickname + "/myRepo/"
     text = "java runTest"
@@ -462,10 +540,13 @@ def killProcess(processid):
         except StopIteration:
 	    pass
 
-@app.route('/get_input/<processid>/<path:newInput>', methods = ['GET'])
+@app.route('/get_input/<processid>', methods = ['GET'])
 @login_required
-def inputrefresh(processid, newInput):
+def inputrefresh(processid):
         global process
+	newInput = "test"
+	newInput = request.args.get('message', '')
+	flash(newInput)
 	try:
             for gen in process:
                 if gen.name == processid:
@@ -542,6 +623,9 @@ def view(filepath):
     form = menusetup(user)
     dirs = getfolders(user)
     shareform = sharesetup(user)
+    commitform = commitsetup(user)
+    pushform = pushsetup(user)
+    pullform = pullsetup(user)
 
     files = []
 
@@ -587,6 +671,9 @@ def view(filepath):
             user = user,
             form = form,
 	    shareform = shareform,
+	    commitform = commitform,
+	    pushform = pushform,
+	    pullform = pullform,
             dirs =  dirs,
             files = files,
 	    heading = filepath)

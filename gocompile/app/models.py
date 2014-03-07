@@ -64,6 +64,8 @@ class Language(db.Model):
     id = db.Column(db.Integer, primary_key = True)
     filetype  = db.Column(db.String(140), unique = True)
     compile  = db.Column(db.String(140))
+    location = db.Column(db.String(140))
+    file = db.Column(db.Boolean, default=False)
     run  = db.Column(db.String(140))
     syntax = db.Column(db.String(140))
 

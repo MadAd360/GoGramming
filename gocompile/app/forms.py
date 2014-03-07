@@ -72,3 +72,12 @@ class AddForm(Form):
 	
 class ShareForm(Form):
     user = TextField('user', validators = [Required()])
+
+class CommitForm(Form):
+    repos = SelectField('repos')
+
+class PushForm(Form):
+    repos = SelectField('repos')
+
+class PullForm(Form):
+    repos = SelectField('repos')

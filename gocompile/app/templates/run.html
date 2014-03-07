@@ -5,10 +5,11 @@
   setInterval(
     function()
     { 
+
        $.ajaxSetup({ cache: false });
-       var encoded = encodeURIComponent('/get_output/{{processid}}');
+       var encoded = encodeURIComponent('/get_output/');
        var p = $.getJSON(
-          $SCRIPT_ROOT + encoded,
+	  '{{url_for('outputrefresh', processid=processid)}}',
           {},
           function(data)
           {
@@ -82,9 +83,10 @@ $("#update").click(
 
        $.ajaxSetup({ cache: false });
        var encoded = encodeURIComponent('/get_input/{{processid}}/' + $("#input").val());
+       var input = encodeURIComponent($("#input").val());
        $.getJSON(
-        $SCRIPT_ROOT + encoded,
-        {},
+        '{{url_for('inputrefresh', processid=processid)}}',
+        {message: input},
         function()
         {
 	  $("#input").val('');
@@ -101,7 +103,7 @@ $("#kill").click(
        $.ajaxSetup({ cache: false });
        var encoded = encodeURIComponent('/kill_process/{{processid}}');
        $.getJSON( 
-        $SCRIPT_ROOT + encoded,
+        '{{url_for('killProcess', processid=processid)}}',
         {},
         function()
         {
@@ -112,7 +114,7 @@ $("#kill").click(
 
 
 <pre id="output" class="outputline"></pre>
-
+<pre id="test" class="outputline"></pre>
 
 
 <p>

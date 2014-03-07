@@ -1,13 +1,14 @@
 import pkgutil
 import sys
-import plugins
+from plugins import *
 from language import Language
 from app import models, db
 import os
 from flask import flash
 
+
 def loadLanguages(dirname):
-    module = 'test'
+    module = "test"
     modules = pkgutil.iter_modules([dirname])
     #for file, pathname, description in imp.find_module(dirname):
     for importer, package_name, ispkg in modules:
@@ -26,7 +27,7 @@ def loadLanguages(dirname):
             if exist is None:
 	    	db_lang = models.Language(filetype=language.getType(), compile=language.getCompile(), run=language.getRun(), syntax=language.getSyntax())
 	    	db.session.add(db_lang)
-	db.session.commit()
+    	db.session.commit()
     return module
 
 def classesinmodule(module):

@@ -2,6 +2,19 @@
 
 
 {% block within %}
+
+<ul class="nav nav-pills">
+{% for repo in repos %}
+{% if repo.active %}
+  <li class="active"><a href="">{{repo.reponame}}</a></li>
+{% else %} 
+ <li><a href="{{url_for('index', activerepo=repo.reponame)}}">{{repo.reponame}}</a></li>
+{% endif %}
+{% endfor %}
+</ul>
+<p>
+</p>
+
     {% for file in files %}
 <form action="" method="post" name="login">
 <div class="panel panel-default">
