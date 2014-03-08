@@ -10,9 +10,17 @@
 <link rel="stylesheet" type="text/css" href="/static/js/codemirror/lib/codemirror.css">
 <script src="/static/js/codemirror/mode/javascript/javascript.js"></script>
 <script src="/static/js/codemirror/mode/clike/clike.js"></script>
+<script src="/static/js/codemirror/mode/python/python.js"></script>
 <link href="/static/js/codemirror/theme/go-theme.css" type="text/css" rel="stylesheet" />
 <link href="/static/js/codemirror/theme/base16-light.css" type="text/css" rel="stylesheet" />
 <script src="/static/js/codemirror/addon/edit/matchbrackets.js"></script>
+<script src="/static/js/codemirror/addon/edit/matchtags.js"></script>
+<script src="/static/js/codemirror/addon/fold/foldcode.js"></script>
+<script src="/static/js/codemirror/addon/fold/foldgutter.js"></script>
+<script src="/static/js/codemirror/addon/fold/comment-fold.js"></script>
+<script src="/static/js/codemirror/addon/fold/xml-fold.js"></script>
+<script src="/static/js/codemirror/addon/fold/brace-fold.js"></script>
+<link href="/static/js/codemirror/addon/fold/foldgutter.css" type="text/css" rel="stylesheet" />
 
 <script type=text/javascript>
   $SCRIPT_ROOT = {{ request.script_root|tojson|safe }};

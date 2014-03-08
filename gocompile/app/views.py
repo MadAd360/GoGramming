@@ -385,6 +385,17 @@ def edit(filepath):
 	if request.method == 'POST':
 	    if request.form.get('btn', None) == 'Save':
 		open(path, 'w').write(request.form['newcontent'])
+		templist = name.split('.')
+		if len(templist) > 1:
+                    type = templist[len(templist) - 1]
+                    lang = Language.query.filter_by(filetype=type).first()
+                    if lang is not None:
+			if lang.interpreted:
+			    binary = path.replace('local','bin')
+			    command = "cp " + path + " " + binary  
+			    args = command.split()
+			    p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                            p.wait()
 	    if request.form.get('btn', None) == 'Delete':
                 f = File.query.filter_by(filename=name).first()
 		if f is not None:
@@ -479,31 +490,42 @@ def inner(proc):
             #if line != '':
                 #yield line
 
-@app.route('/run/', methods = ['GET', 'POST'])
+@app.route('/run/<path:filepath>', methods = ['GET', 'POST'])
 @login_required
-def run():
+def run(filepath):
     global process
     user = g.user
-    location = settings.WORKING_DIR + user.nickname + "/myRepo/"
-    text = "java runTest"
+    name = os.path.split(filepath)[1]
+    tail = os.path.split(filepath)[0]
+    templist = name.split('.')
+    if len(templist) > 1:
+            filetype = templist[len(templist) - 1]
+            lang = Language.query.filter_by(filetype=filetype).first()
+    	    if lang is not None:
+    		location = settings.WORKING_DIR + user.nickname + "/" + tail
+    		text = lang.run + name
+		if not lang.includetype:
+		    text = lang.run + templist[0]
+		flash(text)
+    #text = "java runTest"
     #text = "javac "+ settings.WORKING_DIR + user.nickname + "/myRepo/hats.java"
-    location = location.replace('local','bin')
-    args = text.split()
-    p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE, cwd=location)
-    time = datetime.datetime.now()
-    id = 1
-    unique = False
-    fullid = fullid = "" + g.user.nickname + str(id)
-    while not unique:
-	unique = True
-    	for gen in process:
-            if gen.name == fullid:
-		id = id + 1
-	    	fullid = "" + g.user.nickname + str(id)
-		unique = False
-    fullid = str(fullid)
-    procobj = type(fullid, (object,), {'name' : fullid,  'out': inner(p), 'proc': p, 'access': time})
-    process.append(procobj)
+    		location = location.replace('local','bin')
+    		args = text.split()
+		p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE, cwd=location)
+		time = datetime.datetime.now()
+    		id = 1
+    		unique = False
+    		fullid = fullid = "" + g.user.nickname + str(id)
+    		while not unique:
+		    unique = True
+    		    for gen in process:
+            		if gen.name == fullid:
+			    id = id + 1
+	    		    fullid = "" + g.user.nickname + str(id)
+			    unique = False
+    		fullid = str(fullid)
+    		procobj = type(fullid, (object,), {'name' : fullid,  'out': inner(p), 'proc': p, 'access': time})
+    		process.append(procobj)
     #process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
     #input = "test input"
 
@@ -546,7 +568,6 @@ def inputrefresh(processid):
         global process
 	newInput = "test"
 	newInput = request.args.get('message', '')
-	flash(newInput)
 	try:
             for gen in process:
                 if gen.name == processid:

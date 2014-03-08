@@ -1,14 +1,33 @@
 {% extends "menubar.html" %}
 
+{% block head %} 
+<style type="text/css"> 
+.active-colour { 
+  color: #32C0B4 !important;;
+  background-color: #ADE7E1 !important; 
+}
+
+.white-text{
+  color: #ffffff;
+}
+
+.white-text:hover,
+.white-text:focus {
+  color: #ffffff !important;;
+  background-color: #ADE7E1 !important;;
+}
+</style> 
+{% endblock %}
+
 
 {% block within %}
 
 <ul class="nav nav-pills">
 {% for repo in repos %}
 {% if repo.active %}
-  <li class="active"><a href="">{{repo.reponame}}</a></li>
+  <li class="active"><a class="active-colour" href="">{{repo.reponame}}</a></li>
 {% else %} 
- <li><a href="{{url_for('index', activerepo=repo.reponame)}}">{{repo.reponame}}</a></li>
+ <li><a class="white-text" href="{{url_for('index', activerepo=repo.reponame)}}">{{repo.reponame}}</a></li>
 {% endif %}
 {% endfor %}
 </ul>
@@ -36,7 +55,6 @@
     var area = document.getElementById('code');
     area.setAttribute('id','code{{file.filename}}');
     var cm = CodeMirror.fromTextArea(document.getElementById('code{{file.filename}}'), {
-    	matchBrackets: true,
     	mode: "{{file.syntax}}",
     	theme: "go-theme",
     	lineNumbers: true,

@@ -63,10 +63,15 @@ class File(db.Model):
 class Language(db.Model):
     id = db.Column(db.Integer, primary_key = True)
     filetype  = db.Column(db.String(140), unique = True)
+    interpreted = db.Column(db.Boolean, default=False)
+    
     compile  = db.Column(db.String(140))
     location = db.Column(db.String(140))
     file = db.Column(db.Boolean, default=False)
+    
     run  = db.Column(db.String(140))
+    includetype = db.Column(db.Boolean, default=False)
+
     syntax = db.Column(db.String(140))
 
     def __repr__(self):

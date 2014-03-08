@@ -23,7 +23,7 @@ $(document).ready(function(){
     <div class="btn-group pull-right">
   <button name="btn" value="Save" type="submit" class="btn btn-default">Save</button>
   <button name="btn" value="Compile" type="submit" class="btn btn-default">Compile</button>
-<a type="button" href="{{url_for('run')}}" class="btn btn-default">Run</a>
+<a type="button" href="{{url_for('run', filepath=file.filepath)}}" class="btn btn-default">Run</a>
   <a id="popover" class="btn btn-default" data-toggle="popover" title="Are you sure?" >Delete</a>
 </div>
 </div>
@@ -38,7 +38,9 @@ var cm = CodeMirror.fromTextArea(document.getElementById("code"), {
     matchBrackets: true,
     mode: "{{file.syntax}}",
     theme: "go-theme",
-    lineNumbers: true
+    lineNumbers: true,
+    foldGutter: true,
+    gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"]
   });
 cm.setSize(null,600);
 var savearea = $('textarea[name="newcontent"]').hide();

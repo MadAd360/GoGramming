@@ -83,7 +83,7 @@ $("#update").click(
 
        $.ajaxSetup({ cache: false });
        var encoded = encodeURIComponent('/get_input/{{processid}}/' + $("#input").val());
-       var input = encodeURIComponent($("#input").val());
+       var input = $("#input").val();
        $.getJSON(
         '{{url_for('inputrefresh', processid=processid)}}',
         {message: input},
