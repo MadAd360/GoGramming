@@ -1,4 +1,4 @@
-<!-- extend from base layout --> {% extends "base.html" %}
+{% extends "base.html" %}
 
 {% block main %}
 <script type="text/javascript">
@@ -14,15 +14,15 @@
           function(data)
           {
             if(data.result != null)
-	        var current = $("#output").text()
+	        var current = $("#output").text();
                 $("#output").text(current + data.result);
 
          });
 
-	setTimeout(function(){p.abort()},2000);
+	setTimeout(function(){p.abort()},500);
 
     },
-    2000);
+    500);
 </script>
 
 
@@ -65,14 +65,22 @@ body {
 <div class="panel panel-default span7 col-md-4 col-md-offset-4">
   <div class="panel-body">
 
+<a class="navbar-brand" href="{{ url_for('index') }}"><img src="{{ url_for('static', filename = 'images/go.png') }}" class="img-responsive" alt="Responsive image" border="0"></a>
+<h3>Run: {{heading}}</h3>
 
-<textarea id="input" class="form-control" rows="3"></textarea>
+<textarea id="input" class="form-control" rows="3" placeholder="Input to Program"></textarea>
 
 
+<div class="btn-group pull-right">
 <button id="update" class="btn btn-default" >Input</button>
-<button id="kill" class="btn btn-default pull-right">Kill</button>
+<button id="kill" class="btn btn-default">Cancel</button>
+</div>
 
+<p>
+</p>
+<p>Output:</p>
 
+<pre id="output" class="outputline"></pre>
 
 <script type="text/javascript">
 
@@ -102,6 +110,8 @@ $("#kill").click(
 
        $.ajaxSetup({ cache: false });
        var encoded = encodeURIComponent('/kill_process/{{processid}}');
+       var current = $("#output").text();
+       $("#output").text(current + '----Process Killed----');
        $.getJSON( 
         '{{url_for('killProcess', processid=processid)}}',
         {},
@@ -113,8 +123,6 @@ $("#kill").click(
 </script>
 
 
-<pre id="output" class="outputline"></pre>
-<pre id="test" class="outputline"></pre>
 
 
 <p>

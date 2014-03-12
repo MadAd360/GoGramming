@@ -1,7 +1,7 @@
 from flask import render_template, flash, redirect, session, url_for, request, g, make_response, jsonify, Response, stream_with_context
 from flask.ext.login import login_user, logout_user, current_user, login_required
 from app import app, db, lm
-from forms import LoginForm, CreateForm, AddForm, ShareForm, CommitForm, PushForm, PullForm
+from forms import LoginForm, CreateForm, AddForm, ShareForm, CommitForm, PushForm, PullForm, ChangeForm
 from models import User, Post, Rpstry, File, Language, Error, ROLE_USER, ROLE_ADMIN
 import os
 import crypt
@@ -21,12 +21,9 @@ import re
 process = []
 
 
-def stream_template(template_name, **context):
-    app.update_template_context(context)
-    t = app.jinja_env.get_template(template_name)
-    rv = t.stream(context)
-    #rv.enable_buffering(5)
-    return rv
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template('404.html'), 404
 
 @lm.user_loader
 def load_user(id):
@@ -111,6 +108,7 @@ def menusetup(user):
     form.type.choices = types
 
     if form.validate_on_submit():
+	flash("Add")
 	userlocation = form.location.data	     
 	locationpath = settings.WORKING_DIR + user.nickname + "/" + userlocation
 	if os.path.isdir(locationpath):
@@ -141,51 +139,53 @@ def sharesetup(user):
     form = ShareForm()
     if form.validate_on_submit():
     	shareuser = form.user.data
-    	sharepath = settings.WORKING_DIR + shareuser
-	shareuserdb = User.query.filter_by(nickname=shareuser).first()
-    	sharedname = user.nickname + "Repo"
+	if shareuser != user.nickname:
+    	    sharepath = settings.WORKING_DIR + shareuser
+	    shareuserdb = User.query.filter_by(nickname=shareuser).first()
+    	    sharedname = user.nickname + "Repo"
     
-    	currentRepo = shareuserdb.repos.filter_by(repourl="/" + sharedname + "/").first()
-    	if currentRepo is None:
-	    existing = False
-    	    for sub in os.listdir(sharepath):
-	        if sub == sharedname:
-	    	    existing = True
-    	    if not existing:
-	    	repo = Repo(settings.REMOTE_DIR + user.nickname)
-	    	os.system("sudo mkdir " + sharepath + "/" + sharedname)
-		working_repo = repo.clone(sharepath + "/" + sharedname , False, False, "origin")
-            	p = subprocess.Popen(["sudo", "git", "remote", "add", "origin", "file:///" + settings.REMOTE_DIR + user.nickname + "/"], cwd=sharepath + "/" + sharedname)
-	    	p.wait()
-	    newrepo = Rpstry(repourl="/" + sharedname + "/", owner=shareuserdb)
-            db.session.add(newrepo)
-            db.session.commit()
+    	    currentRepo = shareuserdb.repos.filter_by(repourl="/" + sharedname + "/").first()
+    	    if currentRepo is None:
+	    	existing = False
+    	    	for sub in os.listdir(sharepath):
+	            if sub == sharedname:
+	    	    	existing = True
+    	    	if not existing:
+	    	    repo = Repo(settings.REMOTE_DIR + user.nickname)
+	    	    os.system("sudo mkdir " + sharepath + "/" + sharedname)
+		    working_repo = repo.clone(sharepath + "/" + sharedname , False, False, "origin")
+            	    p = subprocess.Popen(["sudo", "git", "remote", "add", "origin", "file:///" + settings.REMOTE_DIR + user.nickname + "/"], cwd=sharepath + "/" + sharedname)
+	    	    p.wait()
+	    	newrepo = Rpstry(repourl="/" + sharedname + "/", owner=shareuserdb)
+            	db.session.add(newrepo)
+            	db.session.commit()
 
-	    password = ''
-	    searchfile = open(settings.REMOTE_DIR + shareuser + "/.htpasswd", "r")
-	    for line in searchfile:
-		exactuser = re.compile("^" + shareuser + ":(.)*$")
-                if exactuser.match(line):
-   	            password = line
-	    searchfile.close()
-            open(settings.REMOTE_DIR + user.nickname + "/.htpasswd", 'a').writelines(password)
-            flash("Share")
-	else:
-	    flash("Unshare")
-	    searchfile = open(settings.REMOTE_DIR + user.nickname + "/.htpasswd", "r")
-	    lines = searchfile.readlines()
-	    searchfile.close()
-	    f = open(settings.REMOTE_DIR + user.nickname + "/.htpasswd","w")
-	    for line in lines:
-		flash(line)
-		exactuser = re.compile("^" + shareuser + ":(.)*$")
-		if not exactuser.match(line):
-                    #password = line
-	            flash("in")
-		    f.write(line)
-	    f.close()
-	    db.session.delete(currentRepo)
-	    db.session.commit()
+	    	password = ''
+	    	searchfile = open(settings.REMOTE_DIR + shareuser + "/.htpasswd", "r")
+	    	for line in searchfile:
+		    exactuser = re.compile("^" + shareuser + ":(.)*$")
+                    if exactuser.match(line):
+   	            	password = line
+	        searchfile.close()
+                open(settings.REMOTE_DIR + user.nickname + "/.htpasswd", 'a').writelines(password)
+                flash("Share")
+	    else:
+	    	flash("Unshare")
+	    	searchfile = open(settings.REMOTE_DIR + user.nickname + "/.htpasswd", "r")
+	    	lines = searchfile.readlines()
+	    	searchfile.close()
+	    	f = open(settings.REMOTE_DIR + user.nickname + "/.htpasswd","w")
+	    	for line in lines:
+		    flash(line)
+		    exactuser = re.compile("^" + shareuser + ":(.)*$")
+		    if not exactuser.match(line):
+                    	#password = line
+	            	flash("in")
+		    	f.write(line)
+	        f.close()
+		flash(currentRepo.repourl)
+	        db.session.delete(currentRepo)
+	        db.session.commit()
     return form
 
 
@@ -198,11 +198,13 @@ def commitsetup(user):
 	repos.extend([(reponame,displayname)])
     form.repos.choices = repos
     if form.validate_on_submit():
-        repo = form.repos.data
-    	p1 = subprocess.Popen(["sudo", "git", "add", "-A"], cwd=settings.WORKING_DIR + user.nickname + reponame)
-    	p1.wait()
-    	working_repo = Repo(settings.WORKING_DIR + user.nickname + reponame)
-    	working_repo.do_commit("Test commit", committer=user.nickname + "<" + user.email + ">")
+	if request.form.get('bar', None) == 'Commit':
+	    flash("commiting")
+            repo = form.repos.data
+    	    p1 = subprocess.Popen(["sudo", "git", "add", "-A"], cwd=settings.WORKING_DIR + user.nickname + reponame)
+    	    p1.wait()
+    	    working_repo = Repo(settings.WORKING_DIR + user.nickname + reponame)
+    	    working_repo.do_commit("Test commit", committer=user.nickname + "<" + user.email + ">")
     return form
 
 def pullsetup(user):
@@ -214,8 +216,10 @@ def pullsetup(user):
         repos.extend([(reponame,displayname)])
     form.repos.choices = repos
     if form.validate_on_submit():
-	p1 = subprocess.Popen(["sudo", "git", "pull", "origin", "master"], cwd=settings.WORKING_DIR + user.nickname + reponame)
-	p1.wait()
+	flash("attempted push")
+	if request.form.get('bar', None) == 'Pull':
+	    p1 = subprocess.Popen(["sudo", "git", "pull", "origin", "master"], cwd=settings.WORKING_DIR + user.nickname + reponame)
+	    p1.wait()
     return form
 
 def pushsetup(user):
@@ -227,8 +231,9 @@ def pushsetup(user):
         repos.extend([(reponame,displayname)])
     form.repos.choices = repos
     if form.validate_on_submit():
-        p1 = subprocess.Popen(["sudo", "git", "push", "origin", "master"], cwd=settings.WORKING_DIR + user.nickname + reponame)
-        p1.wait()
+        if request.form.get('bar', None) == 'Push':
+	    p1 = subprocess.Popen(["sudo", "git", "push", "origin", "master"], cwd=settings.WORKING_DIR + user.nickname + reponame)
+            p1.wait()
     return form
 
 
@@ -286,7 +291,6 @@ def menubutton(user):
 		flash(language_loader.loadLanguages('plugins'))
 
 
-@app.route('/', methods = ['GET', 'POST'])
 @app.route('/index/', methods = ['GET', 'POST'])
 @app.route('/index/<activerepo>', methods = ['GET', 'POST'])
 @login_required
@@ -451,12 +455,21 @@ def edit(filepath):
 	#if os.path.exists(errorpath):
 	#    errorfile = open(errorpath, 'r+')
 	#    output = errorfile.read()
+	interpreted = True
+	templist = name.split('.')
+        if len(templist) > 1:
+            type = templist[len(templist) - 1]
+            lang = Language.query.filter_by(filetype=type).first()
+            if lang is not None:
+		if lang.interpreted == False:
+		    interpreted = False  
         text = open(path, 'r').read()
 	file = {
             'filename': name ,
 	    'filepath': filepath,
             'content': text,
-	    'syntax': syntax
+	    'syntax': syntax,
+	    'interpreted': interpreted
         }
     	return render_template("edit.html",
             title = 'Edit',
@@ -471,7 +484,8 @@ def edit(filepath):
 	    output = output,
 	    heading = filepath)
 
-    return redirect(url_for('index'))
+    abort(404)
+    #return redirect(url_for('page_not_found'))
 
 def inner(proc):
     	flags = fcntl(proc.stdout, F_GETFL)
@@ -498,7 +512,11 @@ def run(filepath):
     name = os.path.split(filepath)[1]
     tail = os.path.split(filepath)[0]
     templist = name.split('.')
-    if len(templist) > 1:
+
+    path = settings.WORKING_DIR + user.nickname + "/" + filepath
+
+    if  os.path.isfile(path): 
+        if len(templist) > 1:
             filetype = templist[len(templist) - 1]
             lang = Language.query.filter_by(filetype=filetype).first()
     	    if lang is not None:
@@ -506,7 +524,6 @@ def run(filepath):
     		text = lang.run + name
 		if not lang.includetype:
 		    text = lang.run + templist[0]
-		flash(text)
     #text = "java runTest"
     #text = "javac "+ settings.WORKING_DIR + user.nickname + "/myRepo/hats.java"
     		location = location.replace('local','bin')
@@ -547,7 +564,8 @@ def run(filepath):
 	#yield 'first part'
 	#yield 'second part'
 	#yield p.stdout.readline
-    return Response(render_template('run.html', title='Run', processid=fullid))
+        return render_template('run.html', title='Run', heading=name, processid=fullid)
+    abort(404)
     #return Response(stream_template('run.html', title='Run'))
 
 @app.route('/kill_process/<processid>', methods = ['GET'])
@@ -576,7 +594,7 @@ def inputrefresh(processid):
         except StopIteration:
 	    pass
 
-@app.route('/get_output/<processid>', methods = ['GET', 'POST'])
+@app.route('/get_output/<processid>', methods = ['GET'])
 @login_required
 def outputrefresh(processid):
         global process
@@ -591,24 +609,26 @@ def outputrefresh(processid):
 	except StopIteration:
 	    return None
 
-@app.route('/login', methods = ['GET', 'POST'])
+
+@app.route('/', methods = ['GET', 'POST'])
+@app.route('/login/', methods = ['GET', 'POST'])
 def login():
     if g.user is not None and g.user.is_authenticated():
         return redirect(url_for('index'))
     form = LoginForm()
     if form.validate_on_submit():
 	login_user(form.user, form.remember_me.data)
-        return redirect(url_for('index'))
+        return redirect(request.args.get('next') or url_for('index'))
     return render_template('login.html', 
         title = 'Sign In',
         form = form)
 
-@app.route('/logout')
+@app.route('/logout/')
 def logout():
     logout_user()
     return redirect(url_for('login'))
 
-@app.route('/create', methods = ['GET', 'POST'])
+@app.route('/create/', methods = ['GET', 'POST'])
 def create():
     form = CreateForm()
     if form.validate_on_submit():
@@ -699,4 +719,16 @@ def view(filepath):
             files = files,
 	    heading = filepath)
 
-    return redirect(url_for('index'))
+    abort(404)
+    #return redirect(url_for('index'))
+
+@app.route('/passwordchange/', methods = ['GET', 'POST'])
+def changepass():
+    user = g.user
+    form = ChangeForm()
+    if form.validate_on_submit():
+	user.password=sha512_crypt.encrypt(form.password.data)
+        return redirect(url_for('index'))
+    return render_template('changePassword.html',
+        title = 'Change Password',
+        form = form)

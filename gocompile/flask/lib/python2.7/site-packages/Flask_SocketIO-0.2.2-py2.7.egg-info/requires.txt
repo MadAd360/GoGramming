@@ -1,0 +1,2 @@
+Flask>=0.9
+gevent-socketio>=0.3.6

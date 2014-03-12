@@ -81,3 +81,7 @@ class PushForm(Form):
 
 class PullForm(Form):
     repos = SelectField('repos')
+
+class ChangeForm(Form):
+    password = PasswordField('password', validators = [Required()])
+    confirm = PasswordField('confirm', validators = [Required(), EqualTo('password')])

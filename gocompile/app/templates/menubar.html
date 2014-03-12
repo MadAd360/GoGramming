@@ -9,6 +9,18 @@ word-wrap:break-word;
 }
 
 </style>
+
+<script type="text/javascript">
+
+$(document).ready(function(){
+    $("#popunder").popover({
+        placement : 'bottom',
+        html: 'true',
+        content: '<a href="{{ url_for('changepass') }}" class="btn btn-default">Change Password</a>'+'</br>'+'<a class="btn btn-default" href="{{ url_for('logout')}}"">Logout</a>'
+        });
+});
+
+</script>
  
 {% block head %}{% endblock %} 
 {% endblock %}
@@ -34,7 +46,7 @@ word-wrap:break-word;
 
 <ul class="nav navbar-nav navbar-right">
 {% if g.user.is_authenticated() %}
-        <li><a href="{{ url_for('logout') }}"">Logout {{user.nickname}}</a></li>
+  <li><a id="popunder" class="btn" data-toggle="popover" title="Account:" >{{user.nickname}}</a></li>
 {% endif %}
 </ul>
 
@@ -76,53 +88,61 @@ word-wrap:break-word;
 	<li><a>{{form.location(class="form-control")}}</a></li>
 	<li><a>Type:</a></li>
 	<li><a>{{form.type(class="form-control")}}</a></li>
-	<li><a><input type="submit" value="Add"></a></li>	
+	<li><a><input name="bar" type="submit" value="Add"></a></li>	
 	</form>
 </li>
 
 <li class="dropdown">
 <a href="#" class="dropdown-toggle" data-toggle="dropdown">Commit<b class="caret"></b></a>
         <form class="dropdown-menu" action="" method="post" name="commitfile">
-        {{form.hidden_tag()}}
+        {{commitform.hidden_tag()}}
 
         <li><a>Repository:</a></li>
         <li><a>{{commitform.repos(class="form-control")}}</a></li>
-        <li><a><input type="submit" value="Commit"></a></li>
+        <li><a><input name="bar" type="submit" value="Commit"></a></li>
         </form>
 </li>
 
 <li class="dropdown">
 <a href="#" class="dropdown-toggle" data-toggle="dropdown">Push<b class="caret"></b></a>
         <form class="dropdown-menu" action="" method="post" name="pushfile">
-        {{form.hidden_tag()}}
+        {{pushform.hidden_tag()}}
 
         <li><a>Repository:</a></li>
         <li><a>{{pushform.repos(class="form-control")}}</a></li>
-        <li><a><input type="submit" value="Push"></a></li>
+        <li><a><input name="bar" type="submit" value="Push"></a></li>
         </form>
 </li>
 
 <li class="dropdown">
 <a href="#" class="dropdown-toggle" data-toggle="dropdown">Pull<b class="caret"></b></a>
         <form class="dropdown-menu" action="" method="post" name="pullfile">
-        {{form.hidden_tag()}}
+        {{pullform.hidden_tag()}}
 
         <li><a>Repository:</a></li>
         <li><a>{{pullform.repos(class="form-control")}}</a></li>
-        <li><a><input type="submit" value="Pull"></a></li>
+        <li><a><input name="bar" type="submit" value="Pull"></a></li>
         </form>
 </li>
 
 
-<li class="dropdown">
-<a href="#" class="dropdown-toggle" data-toggle="dropdown">Share<b class="caret"></b></a>
+
+            <li class="dropdown">
+              <a data-toggle="dropdown" class="dropdown-toggle" href="#">Community<b class="caret"></b></a>
+              <ul class="dropdown-menu" role="menu">
+                        <li class="dropdown-submenu">
+                        <a href="">Share</a>
         <form class="dropdown-menu" action="" method="post" name="share">
-        {{form.hidden_tag()}}
+        {{shareform.hidden_tag()}}
 
         <li><a>{{shareform.user(class="form-control", placeholder="Username")}}</a></li>
-	<li><a><input type="submit" value="Share"></a></li>
+        <li><a><input name="bar" type="submit" value="Share"></a></li>
         </form>
-</li>
+
+                        </li>
+                </ul>
+                </li>
+
 
 </ul>
 </div>
