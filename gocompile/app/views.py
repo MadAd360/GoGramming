@@ -1,7 +1,7 @@
 from flask import render_template, flash, redirect, session, url_for, request, g, make_response, jsonify, Response, stream_with_context
 from flask.ext.login import login_user, logout_user, current_user, login_required
-from app import app, db, lm
-from forms import LoginForm, CreateForm, AddForm, ShareForm, CommitForm, PushForm, PullForm, ChangeForm
+from app import app, db, lm, mail
+from forms import LoginForm, CreateForm, AddForm, ShareForm, CommitForm, PushForm, PullForm, ChangeForm, ForgotForm, ForgotResetForm
 from models import User, Post, Rpstry, File, Language, Error, ROLE_USER, ROLE_ADMIN
 import os
 import crypt
@@ -17,6 +17,10 @@ from app import language_loader
 import time
 from plugins import *
 import re
+from flask.ext.mail import Message
+from config import ADMINS
+from itsdangerous import URLSafeSerializer, BadSignature
+
 
 process = []
 
@@ -108,7 +112,6 @@ def menusetup(user):
     form.type.choices = types
 
     if form.validate_on_submit():
-	flash("Add")
 	userlocation = form.location.data	     
 	locationpath = settings.WORKING_DIR + user.nickname + "/" + userlocation
 	if os.path.isdir(locationpath):
@@ -124,13 +127,15 @@ def menusetup(user):
             	    	open(filepath, 'a').close()
 		    	repository = userlocation.split("/")[0]
             	    	myrepo = user.repos.filter_by(repourl= "/" + repository + "/" ).first()
-			f = File(filename=form.filename.data, path=userlocation, type="txt", repo=myrepo)
+			filename = form.filename.data
             	    	if not form.type.data == "None":
-				f = File(filename=form.filename.data + "." + form.type.data, path=userlocation, type="txt", repo=myrepo)
-
+				filename = form.filename.data + "." + form.type.data
+			f = File(filename=filename, path=userlocation, type="txt", repo=myrepo)
+			
+			flash("Created file " + filename + " in " + userlocation, 'info')
             	    	db.session.add(f)
             	    	db.session.commit()
-    else: menubutton(user)    	
+
 
     cleanprocess()
     return form
@@ -168,9 +173,8 @@ def sharesetup(user):
    	            	password = line
 	        searchfile.close()
                 open(settings.REMOTE_DIR + user.nickname + "/.htpasswd", 'a').writelines(password)
-                flash("Share")
+                flash("Shared with: " + shareuser, 'info')
 	    else:
-	    	flash("Unshare")
 	    	searchfile = open(settings.REMOTE_DIR + user.nickname + "/.htpasswd", "r")
 	    	lines = searchfile.readlines()
 	    	searchfile.close()
@@ -186,6 +190,7 @@ def sharesetup(user):
 		flash(currentRepo.repourl)
 	        db.session.delete(currentRepo)
 	        db.session.commit()
+		flash("Unshared with: " + shareuser, 'info')
     return form
 
 
@@ -199,12 +204,13 @@ def commitsetup(user):
     form.repos.choices = repos
     if form.validate_on_submit():
 	if request.form.get('bar', None) == 'Commit':
-	    flash("commiting")
             repo = form.repos.data
-    	    p1 = subprocess.Popen(["sudo", "git", "add", "-A"], cwd=settings.WORKING_DIR + user.nickname + reponame)
+    	    p1 = subprocess.Popen(["sudo", "git", "add", "-A"], cwd=settings.WORKING_DIR + user.nickname + repo)
     	    p1.wait()
-    	    working_repo = Repo(settings.WORKING_DIR + user.nickname + reponame)
+    	    working_repo = Repo(settings.WORKING_DIR + user.nickname + repo)
     	    working_repo.do_commit("Test commit", committer=user.nickname + "<" + user.email + ">")
+	    displayname = repo.replace("/",'')
+	    flash("Commiting to \"" + displayname + "\"", 'info')
     return form
 
 def pullsetup(user):
@@ -216,10 +222,12 @@ def pullsetup(user):
         repos.extend([(reponame,displayname)])
     form.repos.choices = repos
     if form.validate_on_submit():
-	flash("attempted push")
 	if request.form.get('bar', None) == 'Pull':
-	    p1 = subprocess.Popen(["sudo", "git", "pull", "origin", "master"], cwd=settings.WORKING_DIR + user.nickname + reponame)
+	    repo = form.repos.data
+	    p1 = subprocess.Popen(["sudo", "git", "pull", "origin", "master"], cwd=settings.WORKING_DIR + user.nickname + repo)
 	    p1.wait()
+    	    displayname = repo.replace("/",'')
+	    flash("Pulling from \"" + displayname + "\"", 'info')
     return form
 
 def pushsetup(user):
@@ -232,8 +240,11 @@ def pushsetup(user):
     form.repos.choices = repos
     if form.validate_on_submit():
         if request.form.get('bar', None) == 'Push':
-	    p1 = subprocess.Popen(["sudo", "git", "push", "origin", "master"], cwd=settings.WORKING_DIR + user.nickname + reponame)
+	    repo = form.repos.data
+	    p1 = subprocess.Popen(["sudo", "git", "push", "origin", "master"], cwd=settings.WORKING_DIR + user.nickname + repo)
             p1.wait()
+	    displayname = repo.replace("/",'')
+	    flash("Pushing to \"" + displayname + "\"", 'info')
     return form
 
 
@@ -267,30 +278,6 @@ def getrepos(user, activerepo):
     return repos
 
 
-def menubutton(user):
-        if request.method == 'POST':
-            if request.form.get('bar', None) == 'Commit':
-		p1 = subprocess.Popen(["sudo", "git", "add", "-A"], cwd=settings.WORKING_DIR + user.nickname +"/myRepo/")
-        	p1.wait()
-        	working_repo = Repo(settings.WORKING_DIR + user.nickname + "/myRepo/")
-		working_repo.do_commit("Test commit", committer=user.nickname + "<" + user.email + ">")
-            if request.form.get('bar', None) == 'Push':
-                p1 = subprocess.Popen(["sudo", "git", "push", "origin", "master"], cwd=settings.WORKING_DIR + user.nickname + "/myRepo/")
-                p1.wait()
-	    if request.form.get('bar', None) == 'Pull':
-                p1 = subprocess.Popen(["sudo", "git", "pull", "origin", "master"], cwd=settings.WORKING_DIR + user.nickname + "/myRepo/")
-                p1.wait()
-	    if request.form.get('bar', None) == 'Compile':
-		languages = Language.query.all()
-		for lang in languages:
-                    db.session.delete(lang)
-		db.session.commit()
-		#p1 = subprocess.Popen(["sudo", "rm", "*.pyc"], cwd="../plugins/")
-		#p1.wait()
-		#flash("check")
-		flash(language_loader.loadLanguages('plugins'))
-
-
 @app.route('/index/', methods = ['GET', 'POST'])
 @app.route('/index/<activerepo>', methods = ['GET', 'POST'])
 @login_required
@@ -317,7 +304,7 @@ def index(activerepo=None):
 		if f is not None:
                 	db.session.delete(f)
                 	db.session.commit()
-    
+
     for file in dbfiles:
 	name = file.filename
 	path = file.path
@@ -330,7 +317,8 @@ def index(activerepo=None):
                 lang = Language.query.filter_by(filetype=type).first()
                 if lang is not None:
 		    syntax = lang.syntax
-	    text = open(filepath, 'r').read()
+	    file = open(filepath, 'r')
+	    text = file.read()
 	    if "/" in path:
 		repository = path.split("/")[0]
             	relative = path.replace(repository + "/",'')
@@ -352,6 +340,11 @@ def index(activerepo=None):
 	else:
 	    db.session.delete(file)
 	    db.session.commit()
+
+    if not files:
+        flash("You currently have no files in your favourites section. Create new files or favourite exsting files to view them here.", 'info')
+	
+
 	
     return render_template("index.html",
         title = 'Home',
@@ -423,7 +416,6 @@ def edit(filepath):
 			    binary = binary + "/" + templist[0]
 			args.append(lang.location)
 			args.append(binary)
-			#errorfile = open(errorpath, 'w')
 			p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 			p.wait()
 			text = ""
@@ -437,8 +429,10 @@ def edit(filepath):
 			    error = Error(path=tail,filename=name, message=text, owner=user)
 			    db.session.add(error)
 			db.session.commit()
-			#errorfile.close()	
-	    #if request.form.get('btn', None) == 'Run':
+			if text:
+			    flash("Compilation Failed", 'error')
+			else:
+			    flash("Compilation Succeeded", 'success')
 
 
 	syntax = "javascript"
@@ -452,9 +446,6 @@ def edit(filepath):
 	existing = user.errors.filter_by(path=tail,filename=name).first()
 	if existing is not None:
 	    output = existing.message
-	#if os.path.exists(errorpath):
-	#    errorfile = open(errorpath, 'r+')
-	#    output = errorfile.read()
 	interpreted = True
 	templist = name.split('.')
         if len(templist) > 1:
@@ -485,7 +476,7 @@ def edit(filepath):
 	    heading = filepath)
 
     abort(404)
-    #return redirect(url_for('page_not_found'))
+
 
 def inner(proc):
     	flags = fcntl(proc.stdout, F_GETFL)
@@ -628,6 +619,29 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
+
+def get_serializer(secret_key=None):
+    if secret_key is None:
+        secret_key = app.secret_key
+    return URLSafeSerializer(secret_key)
+
+
+@app.route('/activate/<payload>')
+def activate_user(payload):
+    s = get_serializer()
+    try:
+        code = s.loads(payload)
+    except BadSignature:
+        abort(404)
+
+    user = User.query.get_or_404(code)
+    user.active = True
+    db.session.commit()
+    flash('User activated')
+    return redirect(url_for('login'))
+
+
+
 @app.route('/create/', methods = ['GET', 'POST'])
 def create():
     form = CreateForm()
@@ -651,6 +665,12 @@ def create():
 	p = subprocess.Popen(["sudo", "git", "remote", "add", "origin", "file:///" + settings.REMOTE_DIR + newuser + "/"], cwd=settings.WORKING_DIR + newuser + "/myRepo/")
 	p.wait()
 	open(settings.REMOTE_DIR + newuser + "/.htpasswd", 'a').writelines(newuser + ":" + password + "\n")
+	s = get_serializer()
+    	payload = s.dumps(user.id)
+    	url = url_for('activate_user', payload=payload, _external=True)	
+	msg = Message('Confirm Email Address', sender = ADMINS[0], recipients = [user.email])
+	msg.body = "Follow this link to activate account: " + url
+	mail.send(msg)
 	return redirect(url_for('login'))
     return render_template('createAccount.html',
         title = 'Create New Account',
@@ -723,12 +743,121 @@ def view(filepath):
     #return redirect(url_for('index'))
 
 @app.route('/passwordchange/', methods = ['GET', 'POST'])
+@login_required
 def changepass():
     user = g.user
     form = ChangeForm()
     if form.validate_on_submit():
 	user.password=sha512_crypt.encrypt(form.password.data)
-        return redirect(url_for('index'))
+
+	password = crypt.crypt(form.password.data,salt())
+	repos = user.repos
+
+        userrepo = user.nickname
+        searchfile = open(settings.REMOTE_DIR + userrepo + "/.htpasswd", "r")
+        lines = searchfile.readlines()
+        searchfile.close()
+        f = open(settings.REMOTE_DIR + userrepo + "/.htpasswd","w")
+        for line in lines:
+            exactuser = re.compile("^" + user.nickname + ":(.)*$")
+            if not exactuser.match(line):
+                f.write(line)
+        f.close()
+
+        open(settings.REMOTE_DIR + userrepo + "/.htpasswd", 'a').writelines(user.nickname + ":" + password + "\n")
+
+	for repo in repos:
+	    userrepo = re.search('/(.+)Repo/', repo.repourl).group(1)
+	    if userrepo != 'my':
+	    	searchfile = open(settings.REMOTE_DIR + userrepo + "/.htpasswd", "r")
+            	lines = searchfile.readlines()
+            	searchfile.close()
+            	f = open(settings.REMOTE_DIR + userrepo + "/.htpasswd","w")
+            	for line in lines:
+                    exactuser = re.compile("^" + user.nickname + ":(.)*$")
+                    if not exactuser.match(line):
+                    	f.write(line)
+                f.close()
+
+	        open(settings.REMOTE_DIR + userrepo + "/.htpasswd", 'a').writelines(user.nickname + ":" + password + "\n")
+
+        db.session.commit()
+	return redirect(url_for('index'))
     return render_template('changePassword.html',
         title = 'Change Password',
         form = form)
+
+
+
+
+@app.route('/forgot/', methods = ['GET', 'POST'])
+def forgot():
+    form = ForgotForm()
+    if form.validate_on_submit():
+	user = form.user
+        s = get_serializer(form.temppassword.data)
+        payload = s.dumps(user.id)
+        url = url_for('forgotchange', payload=payload, _external=True)
+        msg = Message('Password Reset', sender = ADMINS[0], recipients = [user.email])
+        msg.body = "Follow this link to reset password: " + url
+        mail.send(msg)
+        flash('Password Reset Email Sent')
+        return redirect(url_for('login'))
+    return render_template('forgot.html',
+        title = 'Forgot Password',
+        form = form)
+
+
+
+@app.route('/forgotChange/<payload>', methods = ['GET', 'POST'])
+def forgotchange(payload):
+    form = ForgotResetForm()
+    if form.validate_on_submit():
+
+	s = get_serializer(form.temppassword.data)
+    	try:
+            code = s.loads(payload)
+    	except BadSignature:
+            abort(404)
+
+    	user = User.query.get_or_404(code)
+	user.password=sha512_crypt.encrypt(form.password.data)
+
+        password = crypt.crypt(form.password.data,salt())
+        repos = user.repos
+
+        userrepo = user.nickname
+        searchfile = open(settings.REMOTE_DIR + userrepo + "/.htpasswd", "r")
+        lines = searchfile.readlines()
+        searchfile.close()
+        f = open(settings.REMOTE_DIR + userrepo + "/.htpasswd","w")
+        for line in lines:
+            exactuser = re.compile("^" + user.nickname + ":(.)*$")
+            if not exactuser.match(line):
+                f.write(line)
+        f.close()
+
+        open(settings.REMOTE_DIR + userrepo + "/.htpasswd", 'a').writelines(user.nickname + ":" + password + "\n")
+
+        for repo in repos:
+            userrepo = re.search('/(.+)Repo/', repo.repourl).group(1)
+            if userrepo != 'my':
+                searchfile = open(settings.REMOTE_DIR + userrepo + "/.htpasswd", "r")
+                lines = searchfile.readlines()
+                searchfile.close()
+                f = open(settings.REMOTE_DIR + userrepo + "/.htpasswd","w")
+                for line in lines:
+                    exactuser = re.compile("^" + user.nickname + ":(.)*$")
+                    if not exactuser.match(line):
+                        f.write(line)
+                f.close()
+
+                open(settings.REMOTE_DIR + userrepo + "/.htpasswd", 'a').writelines(user.nickname + ":" + password + "\n")
+
+        db.session.commit()
+	flash('Password Updated')
+        return redirect(url_for('login'))
+    return render_template('forgotPassword.html',
+        title = 'Update Password',
+        form = form)
+

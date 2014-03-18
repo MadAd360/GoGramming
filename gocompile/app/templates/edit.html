@@ -8,6 +8,20 @@ $(document).ready(function(){
 	html: 'true',
 	content: '<button name="btn" value="Delete" type="submit" class="btn btn-default">Yes</button>'+'<button name="btn" class="btn btn-default" onclick="$(&quot;#popover&quot;).popover(&quot;hide&quot;);">No</button>'
 	});
+
+
+$("#compile").click(
+  function(e)
+  {
+
+       $.ajaxSetup({ cache: false });
+       $( "<div class='alert alert-warning'><strong>Please Wait </strong> Compilation has started</div>" ).insertBefore( ".topofpage" );
+
+  });
+
+
+
+
 });
 
 </script>
@@ -15,20 +29,68 @@ $(document).ready(function(){
 {% endblock %}
 
 {% block within %}
-<form action="" method="post" name="login">
+
+<form class="topofpage" action="" method="post" name="login">
 
 <div class="panel panel-default">
 <div class="panel-heading">{{file.filename}}:
+{% if  file.interpreted %}
+
 
     <div class="btn-group pull-right">
   <button name="btn" value="Save" type="submit" class="btn btn-default">Save</button>
-{% if not file.interpreted %}
-  <button name="btn" value="Compile" type="submit" class="btn btn-default">Compile</button>
-{% endif %}
 <a type="button" href="{{url_for('run', filepath=file.filepath)}}" target="_blank" class="btn btn-default">Run</a>
-  <a id="popover" class="btn btn-default" data-toggle="popover" title="Are you sure?" >Delete</a>
+
+
+    <a id="popover" class="btn btn-default" data-toggle="popover" title="Are you sure?" >Delete</a>
+
+  <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+    <span class="caret"></span>
+    <span class="sr-only">Toggle Dropdown</span>
+  </button>
+  <ul class="dropdown-menu" role="menu">
+    <li><a href="#">Copy</a></li>
+    <li><a href="#">Move</a></li>
+  </ul>
+
 </div>
 </div>
+{% else %}
+<div class="btn-group pull-right">
+
+    <a id="popover" class="btn btn-default" data-toggle="popover" title="Are you sure?" >Delete</a>
+
+  <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+    <span class="caret"></span>
+    <span class="sr-only">Toggle Dropdown</span>
+  </button>
+  <ul class="dropdown-menu" role="menu">
+    <li><a href="#">Copy</a></li>
+    <li><a href="#">Move</a></li>
+  </ul>
+
+</div>
+
+
+    <div class="btn-group pull-right">
+  <button name="btn" value="Save" type="submit" class="btn btn-default">Save</button>
+  <button id='compile' name="btn" value="Compile" type="submit" class="btn btn-default">Compile</button>
+  <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+    <span class="caret"></span>
+    <span class="sr-only">Toggle Dropdown</span>
+  </button>
+  <ul class="dropdown-menu" role="menu">
+<li><a href="{{url_for('run', filepath=file.filepath)}}" target="_blank" >Run</a></li>
+  </ul>
+
+</div>
+</div>
+
+
+
+{% endif %}
+
+
 
 <div class="panel-body">
 <p>

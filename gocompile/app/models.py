@@ -9,6 +9,7 @@ class User(db.Model):
     email = db.Column(db.String(120), unique = True)
     password = db.Column(db.String(120))
     role = db.Column(db.SmallInteger, default = ROLE_USER)
+    active = db.Column(db.Boolean, default=False)
     repos = db.relationship('Rpstry', backref = 'owner', lazy = 'dynamic')
     errors = db.relationship('Error', backref = 'owner', lazy = 'dynamic')
 

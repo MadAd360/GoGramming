@@ -8,6 +8,8 @@ color:#ADE7E1;
 word-wrap:break-word;
 }
 
+
+
 </style>
 
 <script type="text/javascript">
@@ -136,11 +138,15 @@ $(document).ready(function(){
         {{shareform.hidden_tag()}}
 
         <li><a>{{shareform.user(class="form-control", placeholder="Username")}}</a></li>
-        <li><a><input name="bar" type="submit" value="Share"></a></li>
+        <li><a><input name="bar" type="submit" value="Share/Unshare"></a></li>
         </form>
 
                         </li>
-                </ul>
+                
+		<li class="divider"></li>
+		<li><a>http://gogramming.co.uk:80/git/testing</a></li>
+		</ul>
+		
                 </li>
 
 
@@ -150,14 +156,33 @@ $(document).ready(function(){
 
 
 
-    {% with messages = get_flashed_messages() %}
+    {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
     <ul>
-    {% for message in messages %}
+    {% for category, message in messages %}
+{% if category == "success" %}
+<div class="alert alert-success alert-dismissable">
+        <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+        {{ message }}
+        </div>
+{% elif category == "error" %}
+<div class="alert alert-danger alert-dismissable">
+        <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+        {{ message }}
+        </div>
+
+{% elif category == "info" %}
+<div class="alert alert-info alert-dismissable">
+        <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+        {{ message }}
+        </div>
+{% else %}
+
         <div class="alert alert-warning alert-dismissable">
         <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
         <strong>Warning!</strong> {{ message }}
         </div>
+{% endif %}
     {% endfor %}
     </ul>
     {% endif %}

@@ -7,8 +7,8 @@ import settings
 from passlib.hash import sha512_crypt
 
 class LoginForm(Form):
-    username = TextField('username', validators = [Required()])
-    password = PasswordField('password', validators = [Required()])
+    username = TextField('username', validators = [Required('Username is Required')])
+    password = PasswordField('password', validators = [Required('Password is Requied')])
     remember_me = BooleanField('remember_me', default = False)
     
     def __init__(self, *args, **kwargs):
@@ -26,6 +26,10 @@ class LoginForm(Form):
             self.username.errors.append('Unknown username')
             return False
 
+	if not user.active:
+            self.username.errors.append('User not activated')
+            return False
+	
         #if not user.check_password(
 	if not sha512_crypt.verify(self.password.data, user.password):
             self.password.errors.append('Invalid password')
@@ -85,3 +89,30 @@ class PullForm(Form):
 class ChangeForm(Form):
     password = PasswordField('password', validators = [Required()])
     confirm = PasswordField('confirm', validators = [Required(), EqualTo('password')])
+
+class ForgotResetForm(Form):
+    password = PasswordField('password', validators = [Required()])
+    confirm = PasswordField('confirm', validators = [Required(), EqualTo('password')])
+    temppassword = PasswordField('temppassword', validators = [Required()])
+
+class ForgotForm(Form):
+    email = TextField('email', validators = [Required(), Email()])
+    temppassword = PasswordField('temppassword', validators = [Required()])
+
+    def __init__(self, *args, **kwargs):
+        Form.__init__(self, *args, **kwargs)
+        self.user = None
+
+    def validate(self):
+        # regular validation
+        rv = Form.validate(self)
+        if not rv:
+            return False
+
+        user = User.query.filter_by(email=self.email.data).first()
+        if user is None:
+            self.email.errors.append('Unknown Email Address')
+            return False
+
+	self.user = user
+	return True
