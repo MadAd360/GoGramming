@@ -127,7 +127,7 @@ def menusetup(user):
 		else:
 		    if not form.type.data == "None":
 		    	filepath = filepath + "." + form.type.data
-        	    if not os.path.isfile(filepath):
+        	    if not os.path.exists(filepath):
             	    	open(filepath, 'a').close()
 		    	repository = userlocation.split("/")[0]
             	    	myrepo = user.repos.filter_by(repourl= "/" + repository + "/" ).first()
@@ -140,7 +140,7 @@ def menusetup(user):
             	    	db.session.add(f)
             	    	db.session.commit()
 		    else:
-			flash('File already exists', 'error')
+			flash('File/directory already exists', 'error')
         else:
 	    flash('Name of new file/directory must not have spaces or slashes', 'error')
     cleanprocess()
@@ -210,10 +210,12 @@ def commitsetup(user):
     if form.validate_on_submit():
 	if request.form.get('bar', None) == 'Commit':
             repo = form.repos.data
+	    repo = repo.replace("/",'')
 	    message = request.form['commitmessage']
-    	    p1 = subprocess.Popen(["sudo", "git", "add", "-A"], cwd=settings.WORKING_DIR + user.nickname + repo)
+    	    p1 = subprocess.Popen(["sudo", "git", "add", "-A"], cwd=settings.WORKING_DIR + user.nickname + "/" + repo, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     	    p1.wait()
-    	    working_repo = Repo(settings.WORKING_DIR + user.nickname + repo)
+    	    flash(p1.stdout.readlines())
+	    working_repo = Repo(settings.WORKING_DIR + user.nickname + "/" + repo)
     	    working_repo.do_commit(message, committer=user.nickname + "<" + user.email + ">")
 	    displayname = repo.replace("/",'')
 	    flash("Commiting to \"" + displayname + "\"", 'info')
@@ -230,8 +232,9 @@ def pullsetup(user):
     if form.validate_on_submit():
 	if request.form.get('bar', None) == 'Pull':
 	    repo = form.repos.data
-	    p1 = subprocess.Popen(["sudo", "git", "pull", "origin", "master"], cwd=settings.WORKING_DIR + user.nickname + repo)
+	    p1 = subprocess.Popen(["sudo", "git", "pull", "origin", "master"], cwd=settings.WORKING_DIR + user.nickname + repo, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 	    p1.wait()
+    	    flash(p1.stdout.readlines())
     	    displayname = repo.replace("/",'')
 	    flash("Pulling from \"" + displayname + "\"", 'info')
     return form
@@ -247,8 +250,9 @@ def pushsetup(user):
     if form.validate_on_submit():
         if request.form.get('bar', None) == 'Push':
 	    repo = form.repos.data
-	    p1 = subprocess.Popen(["sudo", "git", "push", "origin", "master"], cwd=settings.WORKING_DIR + user.nickname + repo)
+	    p1 = subprocess.Popen(["sudo", "git", "push", "origin", "master"], cwd=settings.WORKING_DIR + user.nickname + repo, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             p1.wait()
+    	    flash(p1.stdout.readlines())
 	    displayname = repo.replace("/",'')
 	    flash("Pushing to \"" + displayname + "\"", 'info')
     return form
@@ -471,6 +475,9 @@ def edit(filepath):
                     if lang is not None:
 			if lang.interpreted:
 			    binary = path.replace('local','bin')
+			    bintail = os.path.split(binary)[0]
+			    if not os.path.exists(bintail):
+				os.makedirs(bintail)
 			    command = "cp " + path + " " + binary  
 			    args = command.split()
 			    p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -557,7 +564,7 @@ def edit(filepath):
 	    'interpreted': interpreted
         }
 	
-	heading = getFolderHeading(filepath, False)
+	heading = getFolderHeading(filepath, True)
 	    
     	return render_template("edit.html",
             title = 'Edit',
@@ -807,7 +814,7 @@ def view(filepath):
     if os.path.isdir(folderpath):
     	for sub in os.listdir(folderpath):
 	    fullpath = folderpath + "/" + sub
-            if not os.path.isdir(fullpath):
+            if os.path.isfile(fullpath):
 	    	name = sub
 		syntax = "javascript"
         	templist = name.split('.')

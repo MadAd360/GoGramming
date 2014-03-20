@@ -76,7 +76,6 @@ class AddForm(Form):
 
     def __init__(self, *args, **kwargs):
         Form.__init__(self, *args, **kwargs)
-        self.user = None
 
     def validate(self):
         rv = Form.validate(self)
@@ -86,7 +85,6 @@ class AddForm(Form):
         if ("/" in self.filename.data) or ("\\" in self.filename.data):
             return False
 
-        self.user = user
         return True
 
 	
