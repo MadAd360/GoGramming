@@ -20,75 +20,69 @@ $("#compile").click(
   });
 
 
+$("#hold").click(function(e) {
+    e.stopPropagation();
+});
+
+
+$(function(){
+    $('#save').tooltip();
+    $("#fav").tooltip();
+});
 
 
 });
-
 </script>
+
 
 {% endblock %}
 
 {% block within %}
 
-<form class="topofpage" action="" method="post" name="login">
+
+<ol class="breadcrumb go-back topofpage">
+{% for folder in heading %}
+{% if folder.active %}
+<li><a class="active go-header">{{folder.foldername}}</a></li>
+{% else %}
+  <li><a href="{{url_for('view', filepath=folder.folderpath)}}" class="go-header">{{folder.foldername}}</a></li>
+{% endif %}
+{% endfor %}
+</ol>
 
 <div class="panel panel-default">
 <div class="panel-heading">{{file.filename}}:
-{% if  file.interpreted %}
 
 
-    <div class="btn-group pull-right">
-  <button name="btn" value="Save" type="submit" class="btn btn-default">Save</button>
-<a type="button" href="{{url_for('run', filepath=file.filepath)}}" target="_blank" class="btn btn-default">Run</a>
+<div class="btn-group btn-hover pull-right">
 
 
-    <a id="popover" class="btn btn-default" data-toggle="popover" title="Are you sure?" >Delete</a>
-
-  <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
-    <span class="caret"></span>
-    <span class="sr-only">Toggle Dropdown</span>
-  </button>
-  <ul class="dropdown-menu" role="menu">
-    <li><a href="#">Copy</a></li>
-    <li><a href="#">Move</a></li>
-  </ul>
-
-</div>
-</div>
-{% else %}
-<div class="btn-group pull-right">
-
-    <a id="popover" class="btn btn-default" data-toggle="popover" title="Are you sure?" >Delete</a>
-
-  <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
-    <span class="caret"></span>
-    <span class="sr-only">Toggle Dropdown</span>
-  </button>
-  <ul class="dropdown-menu" role="menu">
-    <li><a href="#">Copy</a></li>
-    <li><a href="#">Move</a></li>
-  </ul>
-
-</div>
-
-
-    <div class="btn-group pull-right">
-  <button name="btn" value="Save" type="submit" class="btn btn-default">Save</button>
+  <button id="save" name="btn" value="Save" type="submit" class="btn btn-default" data-toggle="tooltip" data-placement="top" title="Save"><span class="glyphicon glyphicon-floppy-disk"></span></button>
+{% if not file.interpreted %}
   <button id='compile' name="btn" value="Compile" type="submit" class="btn btn-default">Compile</button>
+
+{% endif %}
+<button id='fav' name="btn" value="Favourite" type="submit" class="btn btn-default" data-toggle="tooltip" data-placement="top" title="Favourite"><span class="glyphicon glyphicon-star"></span></button>
+    <a id="popover" class="btn btn-default" data-toggle="popover" title="Are you sure?" >Delete</a>
+
   <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
     <span class="caret"></span>
     <span class="sr-only">Toggle Dropdown</span>
   </button>
   <ul class="dropdown-menu" role="menu">
 <li><a href="{{url_for('run', filepath=file.filepath)}}" target="_blank" >Run</a></li>
+<li class="divider"></li>
+        <li><a>Copy/Move File:</a></li>
+        <li><a id="hold">{{copyform.copydirs(class="form-control")}}</a></li>
+<li><a><input name="btn" type="submit" value="Copy"></a><a><input name="btn" type="submit" value="Move"></a></li>
   </ul>
 
 </div>
+
 </div>
 
 
 
-{% endif %}
 
 
 

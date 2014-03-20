@@ -1,7 +1,7 @@
-from flask import render_template, flash, redirect, session, url_for, request, g, make_response, jsonify, Response, stream_with_context
+from flask import render_template, flash, redirect, session, url_for, request, g, make_response, jsonify, Response, abort
 from flask.ext.login import login_user, logout_user, current_user, login_required
 from app import app, db, lm, mail
-from forms import LoginForm, CreateForm, AddForm, ShareForm, CommitForm, PushForm, PullForm, ChangeForm, ForgotForm, ForgotResetForm
+from forms import LoginForm, CreateForm, AddForm, ShareForm, CommitForm, PushForm, PullForm, ChangeForm, ForgotForm, ForgotResetForm, CopyForm
 from models import User, Post, Rpstry, File, Language, Error, ROLE_USER, ROLE_ADMIN
 import os
 import crypt
@@ -110,16 +110,20 @@ def menusetup(user):
     for lang in languages:
 	types.extend([(lang.filetype,"." + lang.filetype)])
     form.type.choices = types
-
-    if form.validate_on_submit():
-	userlocation = form.location.data	     
-	locationpath = settings.WORKING_DIR + user.nickname + "/" + userlocation
-	if os.path.isdir(locationpath):
+    
+    if request.form.get('bar', None) == 'Add':
+        if form.validate_on_submit():
+	    userlocation = form.location.data	     
+	    locationpath = settings.WORKING_DIR + user.nickname + "/" + userlocation
+	    if os.path.isdir(locationpath):
 		filepath = locationpath + "/" + form.filename.data
 		if form.type.data == "mkdir":
 		    if not os.path.isdir(filepath):
 			p1 = subprocess.Popen(["sudo", "mkdir", filepath])
-                	p1.wait()    
+                	p1.wait()
+			flash('New Directory Created', 'success')
+		    else:
+		    	flash('Directory already exists', 'error')    
 		else:
 		    if not form.type.data == "None":
 		    	filepath = filepath + "." + form.type.data
@@ -132,65 +136,66 @@ def menusetup(user):
 				filename = form.filename.data + "." + form.type.data
 			f = File(filename=filename, path=userlocation, type="txt", repo=myrepo)
 			
-			flash("Created file " + filename + " in " + userlocation, 'info')
+			flash("Created file " + filename + " in " + userlocation, 'success')
             	    	db.session.add(f)
             	    	db.session.commit()
-
-
+		    else:
+			flash('File already exists', 'error')
+        else:
+	    flash('Name of new file/directory must not have spaces or slashes', 'error')
     cleanprocess()
     return form
 
 def sharesetup(user):
     form = ShareForm()
-    if form.validate_on_submit():
-    	shareuser = form.user.data
-	if shareuser != user.nickname:
-    	    sharepath = settings.WORKING_DIR + shareuser
-	    shareuserdb = User.query.filter_by(nickname=shareuser).first()
-    	    sharedname = user.nickname + "Repo"
+    if request.form.get('bar', None) == 'Share/Unshare':
+    	if form.validate_on_submit():
+    	    shareuser = form.shareuser.data
+	    if shareuser != user.nickname:
+    	    	sharepath = settings.WORKING_DIR + shareuser
+	    	shareuserdb = User.query.filter_by(nickname=shareuser).first()
+    	    	sharedname = user.nickname + "Repo"
     
-    	    currentRepo = shareuserdb.repos.filter_by(repourl="/" + sharedname + "/").first()
-    	    if currentRepo is None:
-	    	existing = False
-    	    	for sub in os.listdir(sharepath):
-	            if sub == sharedname:
-	    	    	existing = True
-    	    	if not existing:
-	    	    repo = Repo(settings.REMOTE_DIR + user.nickname)
-	    	    os.system("sudo mkdir " + sharepath + "/" + sharedname)
-		    working_repo = repo.clone(sharepath + "/" + sharedname , False, False, "origin")
-            	    p = subprocess.Popen(["sudo", "git", "remote", "add", "origin", "file:///" + settings.REMOTE_DIR + user.nickname + "/"], cwd=sharepath + "/" + sharedname)
-	    	    p.wait()
-	    	newrepo = Rpstry(repourl="/" + sharedname + "/", owner=shareuserdb)
-            	db.session.add(newrepo)
-            	db.session.commit()
+    	    	currentRepo = shareuserdb.repos.filter_by(repourl="/" + sharedname + "/").first()
+    	    	if currentRepo is None:
+	    	    existing = False
+    	    	    for sub in os.listdir(sharepath):
+	                if sub == sharedname:
+	    	    	    existing = True
+    	    	    if not existing:
+	    	        repo = Repo(settings.REMOTE_DIR + user.nickname)
+	    	        os.system("sudo mkdir " + sharepath + "/" + sharedname)
+		        working_repo = repo.clone(sharepath + "/" + sharedname , False, False, "origin")
+            	        p = subprocess.Popen(["sudo", "git", "remote", "add", "origin", "file:///" + settings.REMOTE_DIR + user.nickname + "/"], cwd=sharepath + "/" + sharedname)
+	    	        p.wait()
+	    	    newrepo = Rpstry(repourl="/" + sharedname + "/", owner=shareuserdb)
+            	    db.session.add(newrepo)
+            	    db.session.commit()
 
-	    	password = ''
-	    	searchfile = open(settings.REMOTE_DIR + shareuser + "/.htpasswd", "r")
-	    	for line in searchfile:
-		    exactuser = re.compile("^" + shareuser + ":(.)*$")
-                    if exactuser.match(line):
-   	            	password = line
-	        searchfile.close()
-                open(settings.REMOTE_DIR + user.nickname + "/.htpasswd", 'a').writelines(password)
-                flash("Shared with: " + shareuser, 'info')
-	    else:
-	    	searchfile = open(settings.REMOTE_DIR + user.nickname + "/.htpasswd", "r")
-	    	lines = searchfile.readlines()
-	    	searchfile.close()
-	    	f = open(settings.REMOTE_DIR + user.nickname + "/.htpasswd","w")
-	    	for line in lines:
-		    flash(line)
-		    exactuser = re.compile("^" + shareuser + ":(.)*$")
-		    if not exactuser.match(line):
-                    	#password = line
-	            	flash("in")
-		    	f.write(line)
-	        f.close()
-		flash(currentRepo.repourl)
-	        db.session.delete(currentRepo)
-	        db.session.commit()
-		flash("Unshared with: " + shareuser, 'info')
+	    	    password = ''
+	    	    searchfile = open(settings.REMOTE_DIR + shareuser + "/.htpasswd", "r")
+	    	    for line in searchfile:
+		        exactuser = re.compile("^" + shareuser + ":(.)*$")
+                        if exactuser.match(line):
+   	            	    password = line
+	            searchfile.close()
+                    open(settings.REMOTE_DIR + user.nickname + "/.htpasswd", 'a').writelines(password)
+                    flash("Shared with: " + shareuser, 'info')
+	        else:
+	    	    searchfile = open(settings.REMOTE_DIR + user.nickname + "/.htpasswd", "r")
+	    	    lines = searchfile.readlines()
+	    	    searchfile.close()
+	    	    f = open(settings.REMOTE_DIR + user.nickname + "/.htpasswd","w")
+	    	    for line in lines:
+		        exactuser = re.compile("^" + shareuser + ":(.)*$")
+		        if not exactuser.match(line):
+		    	    f.write(line)
+	            f.close()
+	            db.session.delete(currentRepo)
+	            db.session.commit()
+		    flash("Unshared with: " + shareuser, 'info')
+        else:
+	    flash("User does not exists", 'error')
     return form
 
 
@@ -205,10 +210,11 @@ def commitsetup(user):
     if form.validate_on_submit():
 	if request.form.get('bar', None) == 'Commit':
             repo = form.repos.data
+	    message = request.form['commitmessage']
     	    p1 = subprocess.Popen(["sudo", "git", "add", "-A"], cwd=settings.WORKING_DIR + user.nickname + repo)
     	    p1.wait()
     	    working_repo = Repo(settings.WORKING_DIR + user.nickname + repo)
-    	    working_repo.do_commit("Test commit", committer=user.nickname + "<" + user.email + ">")
+    	    working_repo.do_commit(message, committer=user.nickname + "<" + user.email + ">")
 	    displayname = repo.replace("/",'')
 	    flash("Commiting to \"" + displayname + "\"", 'info')
     return form
@@ -359,8 +365,50 @@ def index(activerepo=None):
 	repos = getrepos(user, activerepo),
 	heading = 'Favourites')
 
+def getFolderHeading(filepath, includeActive):
+    heading=[]
+    pathsplit = filepath.split("/")
+    length = len(pathsplit)
+    if includeActive:
+        for i in range(0, length):
+            foldername = pathsplit[i]
+            subpath= foldername
+            restpath = ""
+            if i is not 0:
+                for j in range(0, i):
+                    if restpath == "":
+                        restpath = pathsplit[j]
+                    else:
+                        restpath = restpath + "/" + pathsplit[j]
+                subpath = restpath + "/" + subpath
+            active = False
+            if i == length - 1:
+                active = True
+            heading.append( {
+                'foldername': foldername ,
+                'folderpath': subpath,
+                'active': active
+	    } )
+    else:
+	for i in range(0, length - 1):
+            foldername = pathsplit[i]
+            subpath= foldername
+            restpath = ""
+            if i is not 0:
+                for j in range(0, i):
+                    if restpath == "":
+                        restpath = pathsplit[j]
+                    else:
+                        restpath = restpath + "/" + pathsplit[j]
+                subpath = restpath + "/" + subpath
+	    heading.append( {
+                'foldername': foldername ,
+                'folderpath': subpath
+            } )
+    return heading
 
-@app.route('/edit/<path:filepath>', methods = ['GET', 'POST'])
+
+@app.route('/edit/<path:filepath>/', methods = ['GET', 'POST'])
 @login_required
 def edit(filepath):
     user = g.user
@@ -372,6 +420,17 @@ def edit(filepath):
     pullform = pullsetup(user)
 
     path = settings.WORKING_DIR + user.nickname + "/" + filepath	
+
+    copyform = CopyForm()
+    available = []
+    userrepopath = settings.WORKING_DIR + user.nickname
+    for sub in os.listdir(userrepopath):
+        subpath = userrepopath + "/" + sub
+        if os.path.isdir(subpath):
+	   if subpath != path:
+           	available.extend([(sub,sub)])
+           available.extend(allsubdirectories(user, sub, "|-"))
+    copyform.copydirs.choices = available
     
 
     if  os.path.isfile(path):
@@ -380,6 +439,29 @@ def edit(filepath):
 	output = ""
 
 	if request.method == 'POST':
+	    if request.form.get('btn', None) == 'Copy':
+		newdir = copyform.copydirs.data
+		fullnewdir = settings.WORKING_DIR + user.nickname + "/" + newdir
+		if os.path.exists(fullnewdir + "/" + name):
+		    flash("File cannot be copied, file or folder with same name already exists", 'error')
+		else:
+		    os.system("sudo cp " + path + " " + fullnewdir)
+		    flash(name + " has been copied to " + newdir, 'success')
+		return redirect(url_for('edit', filepath = newdir + "/" + name))
+	    if request.form.get('btn', None) == 'Move':
+		newdir = copyform.copydirs.data
+		#currenttail = os.path.split(filepath)[0]
+		#movetail = os.path.split(newdir)[0]
+                #f = File.query.filter_by(filename=name, path=currenttail).first()
+		fullnewdir = settings.WORKING_DIR + user.nickname + "/" + newdir
+                if os.path.exists(fullnewdir + "/" + name):
+                    flash("File cannot be moved, file or folder with same name already exists", 'error')
+                else:
+                    os.system("sudo mv " + path + " " + fullnewdir)
+		    #f.path = movetail
+         	    #db.session.commit()    
+	            flash(name + " has been moved to " + newdir, 'success')
+		return redirect(url_for('edit', filepath = newdir + "/" + name))
 	    if request.form.get('btn', None) == 'Save':
 		open(path, 'w').write(request.form['newcontent'])
 		templist = name.split('.')
@@ -393,12 +475,15 @@ def edit(filepath):
 			    args = command.split()
 			    p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
                             p.wait()
+		flash("File has been saved", 'success')
 	    if request.form.get('btn', None) == 'Delete':
-                f = File.query.filter_by(filename=name).first()
+		deletetail = os.path.split(filepath)[0]
+                f = File.query.filter_by(filename=name, path=deletetail).first()
 		if f is not None:
 			db.session.delete(f)
 			db.session.commit()
 		os.system("sudo rm " + path)
+		flash("File has been deleted", 'success')
 		return redirect(url_for('index'))
 	    if request.form.get('btn', None) == 'Compile':
 		open(path, 'w').write(request.form['newcontent'])
@@ -433,6 +518,15 @@ def edit(filepath):
 			    flash("Compilation Failed", 'error')
 			else:
 			    flash("Compilation Succeeded", 'success')
+            if request.form.get('btn', None) == 'Favourite':
+		favtail = os.path.split(filepath)[0]
+                repository = favtail.split("/")[0]
+                myrepo = user.repos.filter_by(repourl= "/" + repository + "/" ).first()
+                f = File(filename=name, path=favtail, type="txt", repo=myrepo)
+		current = myrepo.files.filter_by(filename=name, path=favtail).first()
+                if f is not None and current is None:
+                    db.session.add(f)
+                    db.session.commit()
 
 
 	syntax = "javascript"
@@ -462,6 +556,9 @@ def edit(filepath):
 	    'syntax': syntax,
 	    'interpreted': interpreted
         }
+	
+	heading = getFolderHeading(filepath, False)
+	    
     	return render_template("edit.html",
             title = 'Edit',
             user = user,
@@ -470,10 +567,11 @@ def edit(filepath):
             commitform = commitform,
             pushform = pushform,
             pullform = pullform,
+	    copyform = copyform,
 	    file = file,
 	    dirs = dirs,
 	    output = output,
-	    heading = filepath)
+	    heading = heading)
 
     abort(404)
 
@@ -677,7 +775,7 @@ def create():
         form = form)
 
 
-@app.route('/view/<path:filepath>', methods = ['GET', 'POST'])
+@app.route('/view/<path:filepath>/', methods = ['GET', 'POST'])
 @login_required
 def view(filepath):
     user = g.user
@@ -699,7 +797,8 @@ def view(filepath):
 		repository = tail.split("/")[0]
                 myrepo = user.repos.filter_by(repourl= "/" + repository + "/" ).first()
                 f = File(filename=name, path=tail, type="txt", repo=myrepo)
-                if f is not None:
+                current = myrepo.files.filter_by(filename=name, path=tail).first()
+                if f is not None and current is None:
 		    db.session.add(f)
 		    db.session.commit()
 
@@ -726,7 +825,7 @@ def view(filepath):
 		    'syntax': syntax
            	 }])
 
-
+	heading = getFolderHeading(filepath, True)
     	return render_template("view.html",
             title = 'View',
             user = user,
@@ -737,7 +836,7 @@ def view(filepath):
 	    pullform = pullform,
             dirs =  dirs,
             files = files,
-	    heading = filepath)
+	    heading = heading)
 
     abort(404)
     #return redirect(url_for('index'))

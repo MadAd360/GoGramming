@@ -1,15 +1,49 @@
 
-{% extends "base.html" %} 
-{% block main %}
+{% extends "base.html" %} {% block main %}
 
 <style type="text/css">
-.go-header{
-color:#ADE7E1;
+.go-back{
 word-wrap:break-word;
+background-color: #32C0B4;
+font-size: 20px;
+color: #ADE7E1 !important;
 }
 
+.fav-header{
+color:#ADE7E1;
+word-wrap:break-word;
+font-size: 20px;
+}
 
+.go-header{
+color:#ffffff;
+word-wrap:break-word;
+font-size: 18px;
+}
 
+.teal-hover:hover,
+.teal-hover:focus {
+  color: #ADE7E1 ;
+}
+
+.breadcrumb {
+  padding: 0px 0px;
+  margin-bottom: 5px;
+  list-style: none; 
+  border-radius: 0px;
+}
+
+.breadcrumb > li + li:before { 
+font-size: 18px; 
+padding: 0 0px;
+color: #ADE7E1;
+content: "/\00a0";
+}
+
+.page-menu {
+  color: #32C0B4 !important;;
+  background-color: #ADE7E1 !important;
+}
 </style>
 
 <script type="text/javascript">
@@ -98,7 +132,8 @@ $(document).ready(function(){
 <a href="#" class="dropdown-toggle" data-toggle="dropdown">Commit<b class="caret"></b></a>
         <form class="dropdown-menu" action="" method="post" name="commitfile">
         {{commitform.hidden_tag()}}
-
+	<li><a>Commit Message:</a></li>
+	<textarea name='commitmessage' rows='4' class='form-control'></textarea>
         <li><a>Repository:</a></li>
         <li><a>{{commitform.repos(class="form-control")}}</a></li>
         <li><a><input name="bar" type="submit" value="Commit"></a></li>
@@ -137,14 +172,12 @@ $(document).ready(function(){
         <form class="dropdown-menu" action="" method="post" name="share">
         {{shareform.hidden_tag()}}
 
-        <li><a>{{shareform.user(class="form-control", placeholder="Username")}}</a></li>
+        <li><a>{{shareform.shareuser(class="form-control", placeholder="Username")}}</a></li>
         <li><a><input name="bar" type="submit" value="Share/Unshare"></a></li>
         </form>
 
                         </li>
                 
-		<li class="divider"></li>
-		<li><a>http://gogramming.co.uk:80/git/testing</a></li>
 		</ul>
 		
                 </li>
@@ -188,7 +221,7 @@ $(document).ready(function(){
     {% endif %}
     {% endwith %}
 
-<h3 class="go-header">{{ heading }}</h3>
+
 
 {% block within %}{% endblock %}
 

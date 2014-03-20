@@ -39,7 +39,7 @@ class LoginForm(Form):
         return True
 
 class CreateForm(Form):
-    username = TextField('username', validators = [Required(), Regexp('^[^ ]*$')])
+    username = TextField('username', validators = [Required(), Regexp('^[^ ]*$',message='Username must not have spaces')])
     email = TextField('email', validators = [Required(), Email()])
     password = PasswordField('password', validators = [Required()])
     confirm = PasswordField('confirm', validators = [Required(), EqualTo('password')])
@@ -70,12 +70,48 @@ class CreateForm(Form):
         return True
 
 class AddForm(Form):
-    filename = TextField('filename', validators = [Required()])
+    filename = TextField('filename', validators = [Required(), Regexp('^[^ ]*$', message='Filename must not have spaces')])
     location = SelectField('location')
     type = SelectField('type')
+
+    def __init__(self, *args, **kwargs):
+        Form.__init__(self, *args, **kwargs)
+        self.user = None
+
+    def validate(self):
+        rv = Form.validate(self)
+        if not rv:
+            return False
+
+        if ("/" in self.filename.data) or ("\\" in self.filename.data):
+            return False
+
+        self.user = user
+        return True
+
 	
 class ShareForm(Form):
-    user = TextField('user', validators = [Required()])
+    shareuser = TextField('shareuser', validators = [Required()])
+
+    def __init__(self, *args, **kwargs):
+        Form.__init__(self, *args, **kwargs)
+
+    def validate(self):
+        rv = Form.validate(self)
+        if not rv:
+            return False
+
+        user = User.query.filter_by(nickname=self.shareuser.data).first()
+        if user is None:
+            return False
+
+        #user = User.query.filter_by(email=self.email.data).first()
+        #if user is not None:
+        #    self.username.errors.append('Email already exists')
+        #    return False
+
+        return True
+
 
 class CommitForm(Form):
     repos = SelectField('repos')
@@ -116,3 +152,6 @@ class ForgotForm(Form):
 
 	self.user = user
 	return True
+
+class CopyForm(Form):
+    copydirs = SelectField('copydirs')

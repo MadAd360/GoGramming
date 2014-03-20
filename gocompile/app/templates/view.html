@@ -1,6 +1,35 @@
 {% extends "menubar.html" %}
 
 {% block within %}
+
+<ol class="breadcrumb go-back">
+{% for folder in heading %}
+{% if folder.active %}
+<li class="active go-back">{{folder.foldername}}</li>
+{% else %}
+  <li><a href="{{url_for('view', filepath=folder.folderpath)}}" class="go-header teal-hover">{{folder.foldername}}</a></li>
+{% endif %}
+{% endfor %}
+</ol>
+
+
+
+<div class="btn-group">
+  <button type="button" class="btn page-menu dropdown-toggle" data-toggle="dropdown">
+    Action <span class="caret"></span>
+  </button>
+  <ul class="dropdown-menu" role="menu">
+    <li><a href="#">Action</a></li>
+    <li><a href="#">Another action</a></li>
+    <li><a href="#">Something else here</a></li>
+    <li class="divider"></li>
+    <li><a href="#">Separated link</a></li>
+  </ul>
+</div>
+
+<br>
+<br>
+
     {% for file in files %}
 <form action="" method="post" name="login">
 <div class="panel panel-default">
