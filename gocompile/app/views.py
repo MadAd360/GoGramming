@@ -5,7 +5,6 @@ from forms import LoginForm, CreateForm, AddForm, ShareForm, CommitForm, PushFor
 from models import User, Post, Rpstry, File, Language, Error, ROLE_USER, ROLE_ADMIN
 import os
 import crypt
-from dulwich.repo import Repo
 import subprocess
 from fcntl import fcntl, F_GETFL, F_SETFL
 from os import O_NONBLOCK, read
@@ -20,7 +19,7 @@ import re
 from flask.ext.mail import Message
 from config import ADMINS
 from itsdangerous import URLSafeSerializer, BadSignature
-
+from dulwich.repo import Repo
 
 process = []
 
@@ -210,15 +209,21 @@ def commitsetup(user):
     if form.validate_on_submit():
 	if request.form.get('bar', None) == 'Commit':
             repo = form.repos.data
-	    repo = repo.replace("/",'')
 	    message = request.form['commitmessage']
-    	    p1 = subprocess.Popen(["sudo", "git", "add", "-A"], cwd=settings.WORKING_DIR + user.nickname + "/" + repo, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    	    p1.wait()
-    	    flash(p1.stdout.readlines())
-	    working_repo = Repo(settings.WORKING_DIR + user.nickname + "/" + repo)
-    	    working_repo.do_commit(message, committer=user.nickname + "<" + user.email + ">")
-	    displayname = repo.replace("/",'')
-	    flash("Commiting to \"" + displayname + "\"", 'info')
+    	    if message != "":
+	    	p1 = subprocess.Popen(["sudo", "git", "add", "-A"], cwd=settings.WORKING_DIR + user.nickname + repo, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    	    	p1.wait()
+	    	author = "--author=\'" + user.nickname + " <" + user.email + ">\'"
+		flash(author)
+	    	p2 = subprocess.Popen(["sudo", "git", "commit", "-m", message, author], cwd=settings.WORKING_DIR + user.nickname + repo, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+	    	p2.wait()
+    	    	flash(p2.stdout.readlines())
+	    	#working_repo = Repo(settings.WORKING_DIR + user.nickname + "/" + repo)
+    	    	#working_repo.do_commit(message, committer=user.nickname + "<" + user.email + ">")
+	    	displayname = repo.replace("/",'')
+	    	flash("Commiting to \'" + displayname + "\'", 'info')
+    	    else:
+		flash("Commit message cannot be blank", 'error')
     return form
 
 def pullsetup(user):
@@ -555,14 +560,57 @@ def edit(filepath):
             if lang is not None:
 		if lang.interpreted == False:
 		    interpreted = False  
-        text = open(path, 'r').read()
-	file = {
-            'filename': name ,
-	    'filepath': filepath,
-            'content': text,
-	    'syntax': syntax,
-	    'interpreted': interpreted
-        }
+	lines = open(path, 'r').readlines()
+	mergeline = re.compile("^<<<<<<< HEAD")
+	startmerge = False
+	for line in lines:
+	    if mergeline.match(line):
+		startmerge = True
+	    #if startmerge 
+	if startmerge:
+	    currenttext = ""
+	    repotext = ""
+	    currentmerge = True
+	    repomerge = True
+	    switchline = re.compile("^=======")
+	    endline = re.compile("^>>>>>>> ([a-zA-Z0-9])*")
+	    for line in lines:
+		flash(line)
+		if mergeline.match(line):
+                    flash('norm')
+		    repomerge = False
+		elif switchline.match(line):		    
+                    flash('repo')
+		    repomerge = True
+		    currentmerge = False
+		elif endline.match(line):
+		    flash('both')
+		    currentmerge = True
+		else:
+		    if currentmerge:
+			flash('current')
+			currenttext = currenttext + line
+		    if repomerge: 
+			repotext = repotext + line
+            file = {
+                'filename': name ,
+                'filepath': filepath,
+                'content': currenttext,
+		'mergecontent': repotext,
+                'syntax': syntax,
+                'interpreted': interpreted,
+                'merge': True
+            }
+	else:
+	    text = open(path, 'r').read()	
+	    file = {
+            	'filename': name ,
+	    	'filepath': filepath,
+            	'content': text,
+	    	'syntax': syntax,
+	    	'interpreted': interpreted,
+		'merge': False
+            }
 	
 	heading = getFolderHeading(filepath, True)
 	    
