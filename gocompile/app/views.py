@@ -20,6 +20,7 @@ from flask.ext.mail import Message
 from config import ADMINS
 from itsdangerous import URLSafeSerializer, BadSignature
 from dulwich.repo import Repo
+from plugins import *
 
 process = []
 
@@ -507,12 +508,18 @@ def edit(filepath):
 			args = lang.compile.split()
 			args.append(path)
 			binary = tail.replace('local','bin')
+			flash(binary)
 			if not os.path.isdir(binary):
 			    os.makedirs(binary)
 			if lang.file:
 			    binary = binary + "/" + templist[0]
 			args.append(lang.location)
 			args.append(binary)
+			if type == 'java':
+			    args.append('-cp')
+			    loc = "\'" + binary + "/*\'"
+			    flash(loc)
+			    args.append(loc)
 			p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 			p.wait()
 			text = ""
@@ -561,34 +568,32 @@ def edit(filepath):
 		if lang.interpreted == False:
 		    interpreted = False  
 	lines = open(path, 'r').readlines()
-	mergeline = re.compile("^<<<<<<< HEAD")
+	mergeline = re.compile("^<<<<<<< HEAD")	
+	endline = re.compile("^>>>>>>> ([a-zA-Z0-9])*")
 	startmerge = False
+	merge = False
 	for line in lines:
 	    if mergeline.match(line):
 		startmerge = True
-	    #if startmerge 
-	if startmerge:
+	    if startmerge:
+		if endline.match(line):
+		    merge = True 
+	if merge:
 	    currenttext = ""
 	    repotext = ""
 	    currentmerge = True
 	    repomerge = True
 	    switchline = re.compile("^=======")
-	    endline = re.compile("^>>>>>>> ([a-zA-Z0-9])*")
 	    for line in lines:
-		flash(line)
 		if mergeline.match(line):
-                    flash('norm')
 		    repomerge = False
 		elif switchline.match(line):		    
-                    flash('repo')
 		    repomerge = True
 		    currentmerge = False
 		elif endline.match(line):
-		    flash('both')
 		    currentmerge = True
 		else:
 		    if currentmerge:
-			flash('current')
 			currenttext = currenttext + line
 		    if repomerge: 
 			repotext = repotext + line

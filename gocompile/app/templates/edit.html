@@ -102,21 +102,20 @@ $(function(){
 
 <script>
   var savetext = document.getElementById("code");
-  var value, orig1, orig2, dv, hilight= true;
-  panes =2
+  var value,  orig2, dv, hilight= true;
 
+  
   value =  document.getElementById("view").textContent;
-  orig1 = "hats";
   orig2 = document.getElementById("view2").textContent;
 
+function initUI(panes) {
   if (value == null) return;
   var target = document.getElementById("view");
   target.innerHTML = "";
   dv = CodeMirror.MergeView(target, {
     value: value,
-    origLeft: panes == 3 ? orig1 : null,
     orig: orig2,
-    lineNumbers: true,
+    lineNumbers: false,
     mode: "{{file.syntax}}",
     highlightDifferences: hilight
   });
@@ -124,10 +123,44 @@ $(function(){
   dv.editor().on('change', function(){
 	savetext.value = dv.editor().getValue()
     });
+}
+
+window.onload = function() {
+  initUI(2);
+};
 
 function toggleDifferences() {
   dv.setShowDifferences(hilight = !hilight);
 }
+
+
+function mergeViewHeight(mergeView) {
+  function editorHeight(editor) {
+    if (!editor) return 0;
+    return editor.getScrollInfo().height;
+  }
+  return Math.max(editorHeight(mergeView.leftOriginal()),
+                  editorHeight(mergeView.editor()),
+                  editorHeight(mergeView.rightOriginal()));
+}
+
+function resize(mergeView) {
+  var height = mergeViewHeight(mergeView);
+  for(;;) {
+    if (mergeView.leftOriginal())
+      mergeView.leftOriginal().setSize(null, height);
+    mergeView.editor().setSize(null, height);
+    if (mergeView.rightOriginal())
+      mergeView.rightOriginal().setSize(null, height);
+
+    var newHeight = mergeViewHeight(mergeView);
+    if (newHeight >= height) break;
+    else height = newHeight;
+  }
+  mergeView.wrap.style.height = height + "px";
+}
+
+
 
 </script>
 
