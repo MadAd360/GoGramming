@@ -1,5 +1,5 @@
 from flask.ext.wtf import Form
-from wtforms import TextField, BooleanField, PasswordField, SelectField
+from wtforms import TextField, BooleanField, PasswordField, SelectField, SelectMultipleField
 from wtforms.validators import Required, Email, EqualTo, Regexp
 from models import User
 import os
@@ -153,3 +153,6 @@ class ForgotForm(Form):
 
 class CopyForm(Form):
     copydirs = SelectField('copydirs')
+
+class CompileForm(Form):
+    options = SelectMultipleField('options')

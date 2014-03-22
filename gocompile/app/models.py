@@ -33,15 +33,6 @@ class User(db.Model):
     def __repr__(self):
         return '<User %r>' % (self.nickname)
 
-class Post(db.Model):
-    id = db.Column(db.Integer, primary_key = True)
-    body = db.Column(db.String(140))
-    timestamp = db.Column(db.DateTime)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-
-    def __repr__(self):
-        return '<Post %r>' % (self.body)
-
 class Rpstry(db.Model):
     id = db.Column(db.Integer, primary_key = True)
     repourl  = db.Column(db.String(140))
@@ -63,17 +54,11 @@ class File(db.Model):
 
 class Language(db.Model):
     id = db.Column(db.Integer, primary_key = True)
-    filetype  = db.Column(db.String(140), unique = True)
-    interpreted = db.Column(db.Boolean, default=False)
-    
-    compile  = db.Column(db.String(140))
-    location = db.Column(db.String(140))
-    file = db.Column(db.Boolean, default=False)
-    
-    run  = db.Column(db.String(140))
-    includetype = db.Column(db.Boolean, default=False)
-
     syntax = db.Column(db.String(140))
+    modulename = db.Column(db.String(140))
+    filetype  = db.Column(db.String(140), unique=True)
+    interpreted = db.Column(db.Boolean, default=False)
+    additiondir = db.Column(db.Boolean, default=False)
 
     def __repr__(self):
         return '< %r>' % (self.filetype)

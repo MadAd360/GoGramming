@@ -1,5 +1,21 @@
 {% extends "menubar.html" %}
 
+{% block head %}
+<script type="text/javascript">
+
+$(document).ready(function(){
+
+
+$("#hold").click(function(e) {
+    e.stopPropagation();
+});
+
+});
+
+</script>
+{% endblock %}
+
+
 {% block within %}
 
 <ol class="breadcrumb go-back">
@@ -13,22 +29,21 @@
 </ol>
 
 
-
+<form  action="" method="post" name="folder">
 <div class="btn-group">
   <button type="button" class="btn page-menu dropdown-toggle" data-toggle="dropdown">
     Folder Options <span class="caret"></span>
   </button>
   <ul class="dropdown-menu" role="menu">
-    <li><a href="#">Action</a></li>
-    <li><a href="#">Another action</a></li>
-    <li><a href="#">Something else here</a></li>
-    <li class="divider"></li>
-    <button type="submit" class="btn btn-default">Log in</button>
-    <li><a href="#">Separated link</a></li>
+<li><a><input name="viewbar" type="submit" value="Delete Folder"></a></li>
+<li class="divider"></li>
+        <li><a>Copy/Move File:</a></li>
+        <li><a id="hold">{{copyform.copydirs(class="form-control")}}</a></li>
+<li><a><input name="viewbar" type="submit" value="Copy"></a><a><input name="viewbar" type="submit" value="Move"></a></li>
   </ul>
 </div>
+</form>
 
-<br>
 <br>
 
     {% for file in files %}

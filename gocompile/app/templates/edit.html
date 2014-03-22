@@ -9,15 +9,12 @@ $(document).ready(function(){
 	content: '<button name="btn" value="Delete" type="submit" class="btn btn-default">Yes</button>'+'<button name="btn" class="btn btn-default" onclick="$(&quot;#popover&quot;).popover(&quot;hide&quot;);">No</button>'
 	});
 
+    $("#compilepop").popover({
+        placement : 'top',
+        html: 'true',
+        content: '<a>{{compileform.options(class="form-control")}}</a>'+'<button id="compile" name="btn" value="Compile" type="submit" class="btn btn-default compile">Compile</button><button name="btn" class="btn btn-default cancel pull-right" onclick="$(&quot;#compilepop&quot;).popover(&quot;hide&quot;);">Cancel</button>'
 
-$("#compile").click(
-  function(e)
-  {
-
-       $.ajaxSetup({ cache: false });
-       $( "<div class='alert alert-warning'><strong>Please Wait </strong> Compilation has started</div>" ).insertBefore( ".topofpage" );
-
-  });
+	});
 
 
 $("#hold").click(function(e) {
@@ -32,6 +29,23 @@ $(function(){
 
 
 });
+
+
+$(document).on('click', '.compile' , function(){
+
+       $.ajaxSetup({ cache: false });
+       $( "<div class='alert alert-warning'><strong>Please Wait </strong> Compilation has started</div>" ).insertBefore( ".topofpage" );
+});
+
+$(document).on('click', '.cancel' , function(){
+
+    var elements = document.getElementById("options").options;
+
+    for(var i = 0; i < elements.length; i++){
+      elements[i].selected = false;
+    }
+});
+
 </script>
 
 
@@ -62,7 +76,7 @@ $(function(){
 
   <button id="save" name="btn" value="Save" type="submit" class="btn btn-default" data-toggle="tooltip" data-placement="top" title="Save"><span class="glyphicon glyphicon-floppy-disk"></span></button>
 {% if not file.interpreted %}
-  <button id='compile' name="btn" value="Compile" type="submit" class="btn btn-default">Compile</button>
+<a id="compilepop" class="btn btn-default" data-toggle="popover" title="Files to use:" >Compile</a>  
 
 {% endif %}
 <button id='fav' name="btn" value="Favourite" type="submit" class="btn btn-default" data-toggle="tooltip" data-placement="top" title="Favourite"><span class="glyphicon glyphicon-star"></span></button>
