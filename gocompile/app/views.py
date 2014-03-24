@@ -580,18 +580,12 @@ def edit(filepath):
 			location = tail
 			
         		
-			for language in languages:
-			    prog = language()
-			    if prog.getType() == type:
-				command = prog.getCompile(name, binary, additional, plainname)
-				break
-			
-			args = command.split()
-
 
 			file = open(path, "r")
 			lines = file.readlines()
 			file.close()
+
+			filename = name
 
 			if type == 'java':
                        	    file = open(path, "r")
@@ -599,8 +593,12 @@ def edit(filepath):
                     	    file.close()
                     	    package = re.search('package([\n\t ])*([^;]*);', javacode)
                     	    if package is not None:
-				    flash("Due to a variety of issues the application cannot currently handle package declarations in files", 'error')
-				    return redirect(url_for('edit', filepath=filepath))
+				
+				flash(package.group(2))
+				location = os.path.split(tail)[0]
+				flash(location)
+				additional.append(location) 
+				filename = os.path.split(tail)[1] + "/" + name
 
 
 			if type == 'c':
@@ -636,6 +634,15 @@ def edit(filepath):
 			    contents = "".join(contents)
 			    f.write(contents)
 			    f.close()
+
+
+			for language in languages:
+			    prog = language()
+			    if prog.getType() == type:
+				command = prog.getCompile(filename, binary, additional, plainname)
+				break
+			
+			args = command.split()
 
 			if lang.additiondir:
                             if additional is not None:
