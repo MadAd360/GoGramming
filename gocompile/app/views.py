@@ -504,7 +504,7 @@ def edit(filepath):
             for sub in os.listdir(currentfilepath):
                 subpath = currentfilepath + "/" + sub
 	        sublist = sub.split('.')
-	        if sublist[len(sublist) - 1] == type:
+	        if sublist[len(sublist) - 1] == type and subpath != path:
                     if os.path.isfile(subpath):
                         options.extend([(sub,sub)])
 
@@ -593,40 +593,13 @@ def edit(filepath):
 			lines = file.readlines()
 			file.close()
 
-			javapackage = False
 			if type == 'java':
                        	    file = open(path, "r")
                     	    javacode = file.read()
                     	    file.close()
                     	    package = re.search('package([\n\t ])*([^;]*);', javacode)
                     	    if package is not None:
-				contents = list(lines)
-				statedpackage = package.group(2)
-				if statedpackage == os.path.split(tail)[1]:
-				    i = 0
-				    endpackage = False
-				    package = False
-				    while i < len(lines) and not endpackage:
-                                	line = lines[i]
-					if package:
-					    contents.pop(i)
-					    if ';' in line:
-                                                endpackage = True
-					elif 'package' in line:
-					    contents.pop(i)
-					    package = True
-					    if ';' in line:
-						endpackage = True 
-				    #location = os.path.split(tail)[0] 
-				    #filename = os.path.split(tail)[1] + "/" + name
-				    
-				    f = open(path, "w")
-                            	    contents = "".join(contents)
-                            	    f.write(contents)
-                            	    f.close()
-				    javapackage = True
-				else:
-				    flash("Incorrect package name in file", 'error')
+				    flash("Due to a variety of issues the application cannot currently handle package declarations in files", 'error')
 				    return redirect(url_for('edit', filepath=filepath))
 
 
@@ -674,7 +647,7 @@ def edit(filepath):
 			    p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, cwd=location) 
 			p.wait()
 
-			if type == 'c' or javapackage :
+			if type == 'c':
 			    f = open(path, "w")
                             lines = "".join(lines)
                             f.write(lines)
@@ -828,13 +801,6 @@ def run(filepath):
             lang = Language.query.filter_by(filetype=filetype).first()
     	    if lang is not None:
     		location = settings.WORKING_DIR + user.nickname + "/" + tail
-		#if filetype == 'java':
-		    #file = open(path, "r")
-                    #lines = file.read()
-                    #file.close()
-		    #package = re.search('package([\n\t ])*([^;]*);', lines)
-		    #if package is not None:
-			#filename = package.group(2) + "/" + filename
 		location = location.replace('local','bin')
 		if os.path.isdir(location):
 		    module = sys.modules[lang.modulename]
