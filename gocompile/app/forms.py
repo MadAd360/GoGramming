@@ -39,10 +39,10 @@ class LoginForm(Form):
         return True
 
 class CreateForm(Form):
-    username = TextField('username', validators = [Required(), Regexp('^[^ ]*$',message='Username must not have spaces')])
-    email = TextField('email', validators = [Required(), Email()])
-    password = PasswordField('password', validators = [Required()])
-    confirm = PasswordField('confirm', validators = [Required(), EqualTo('password')])
+    username = TextField('username', validators = [Required('Username is Required'), Regexp('^[^ ]*$',message='Username must not have spaces')])
+    email = TextField('email', validators = [Required('Email is Required'), Email()])
+    password = PasswordField('password', validators = [Required('Password is Required')])
+    confirm = PasswordField('confirm', validators = [Required('Confirm Password is Required'), EqualTo('password')])
 
     def __init__(self, *args, **kwargs):
         Form.__init__(self, *args, **kwargs)
@@ -121,17 +121,17 @@ class PullForm(Form):
     repos = SelectField('repos')
 
 class ChangeForm(Form):
-    password = PasswordField('password', validators = [Required()])
-    confirm = PasswordField('confirm', validators = [Required(), EqualTo('password')])
+    password = PasswordField('password', validators = [Required('Password is Required')])
+    confirm = PasswordField('confirm', validators = [Required('Confirm Password is Required'), EqualTo('password')])
 
 class ForgotResetForm(Form):
-    password = PasswordField('password', validators = [Required()])
-    confirm = PasswordField('confirm', validators = [Required(), EqualTo('password')])
-    temppassword = PasswordField('temppassword', validators = [Required()])
+    password = PasswordField('password', validators = [Required('Password is Required')])
+    confirm = PasswordField('confirm', validators = [Required('Confirm Password is Required'), EqualTo('password')])
+    temppassword = PasswordField('temppassword', validators = [Required('Code is Required')])
 
 class ForgotForm(Form):
-    email = TextField('email', validators = [Required(), Email()])
-    temppassword = PasswordField('temppassword', validators = [Required()])
+    email = TextField('email', validators = [Required('Email is Required'), Email()])
+    temppassword = PasswordField('temppassword', validators = [Required('Code is Required')])
 
     def __init__(self, *args, **kwargs):
         Form.__init__(self, *args, **kwargs)

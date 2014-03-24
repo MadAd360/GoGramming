@@ -22,13 +22,15 @@ from itsdangerous import URLSafeSerializer, BadSignature
 from dulwich.repo import Repo
 from plugins import *
 import sys
+import pty
+import select
 
 process = []
 
 
 @app.errorhandler(404)
 def page_not_found(e):
-    return render_template('404.html'), 404
+    return render_template('404.html', title="Page Not Found"), 404
 
 @lm.user_loader
 def load_user(id):
@@ -90,7 +92,7 @@ def recurfolders(user, userpath, iternum):
             }])
     return dirs
 
-def allsubdirectories(user, parentpath, prefix, basepath, ignore):
+def allsubdirectories(user, parentpath, prefix, basepath):
     available = []
     path = basepath + "/" + parentpath
     for sub in os.listdir(path):
@@ -98,12 +100,8 @@ def allsubdirectories(user, parentpath, prefix, basepath, ignore):
        	if os.path.isdir(subpath) and not sub == ".git":
 	    childpath = parentpath + "/" + sub
 	    display = prefix + sub
-	    if ignore is not None:
-	  	if ignore != childpath:
-            	    available.extend([(childpath,display)])
-	    else:
-		available.extend([(childpath,display)])
-	    available.extend(allsubdirectories(user, childpath, prefix + "-", basepath, ignore))
+	    available.extend([(childpath,display)])
+	    available.extend(allsubdirectories(user, childpath, prefix + "-", basepath))
 
     return available
 
@@ -116,7 +114,7 @@ def menusetup(user):
 	subpath = localrepopath + "/" + sub
         if os.path.isdir(subpath):
            available.extend([(sub,sub)])
-	   available.extend(allsubdirectories(user, sub, "|-", localrepopath, None))
+	   available.extend(allsubdirectories(user, sub, "|-", localrepopath))
     form.location.choices = available
 
     types = [("None","Other"), ("mkdir","Directory")]
@@ -231,11 +229,15 @@ def commitsetup(user):
 	    	author = "--author=\'" + user.nickname + " <" + user.email + ">\'"
 	    	p2 = subprocess.Popen(["sudo", "git", "commit", "-m", message, author], cwd=settings.WORKING_DIR + user.nickname + repo, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 	    	p2.wait()
-    	    	flash(p2.stdout.readlines())
+		output = p2.stdout.read()
+		if "nothing to commit" in output:
+		    flash("Nothing to commit", 'error')
+    	    	else:
+		#flash(p2.stdout.read())
 	    	#working_repo = Repo(settings.WORKING_DIR + user.nickname + "/" + repo)
     	    	#working_repo.do_commit(message, committer=user.nickname + "<" + user.email + ">")
-	    	displayname = repo.replace("/",'')
-	    	flash("Commiting to \'" + displayname + "\'", 'info')
+	    	    displayname = repo.replace("/",'')
+	    	    flash("Commiting to \'" + displayname + "\'", 'info')
     	    else:
 		flash("Commit message cannot be blank", 'error')
     return form
@@ -253,9 +255,16 @@ def pullsetup(user):
 	    repo = form.repos.data
 	    p1 = subprocess.Popen(["sudo", "git", "pull", "origin", "master"], cwd=settings.WORKING_DIR + user.nickname + repo, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 	    p1.wait()
-    	    flash(p1.stdout.readlines())
-    	    displayname = repo.replace("/",'')
-	    flash("Pulling from \"" + displayname + "\"", 'info')
+    	    output = p1.stdout.read()
+            if "CONFLICT" in output:
+                flash("There are conflicts: Please fix these and commit changes", 'error')
+            elif "up-to-date" in output:
+		flash("Nothing to pull", 'error')
+	    elif "unmerged" in output:
+		flash("Must fix conflicts and commit changes before pulling", 'error')
+	    else:
+    	        displayname = repo.replace("/",'')
+	        flash("Pulling from \"" + displayname + "\"", 'info')
     return form
 
 def pushsetup(user):
@@ -271,9 +280,14 @@ def pushsetup(user):
 	    repo = form.repos.data
 	    p1 = subprocess.Popen(["sudo", "git", "push", "origin", "master"], cwd=settings.WORKING_DIR + user.nickname + repo, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             p1.wait()
-    	    flash(p1.stdout.readlines())
-	    displayname = repo.replace("/",'')
-	    flash("Pushing to \"" + displayname + "\"", 'info')
+	    output = p1.stdout.read()
+            if "[rejected]" in output:
+                flash("There are conflicts: Please pull, fix, and commit changes", 'error')
+            elif "up-to-date" in output:
+                flash("Nothing to push", 'error')
+            else:
+	        displayname = repo.replace("/",'')
+	        flash("Pushing to \"" + displayname + "\"", 'info')
     return form
 
 
@@ -320,8 +334,11 @@ def index(activerepo=None):
     pullform = pullsetup(user)
     if activerepo is None:
 	activerepo = "myRepo"
-	
-    dbfiles = user.repos.filter_by(repourl="/"+activerepo+"/").first().files    
+
+    dbrepo = user.repos.filter_by(repourl="/"+activerepo+"/").first()
+    if dbrepo is None:
+	abort(404)	
+    dbfiles = dbrepo.files    
     files = []
 
     if request.method == 'POST':
@@ -430,7 +447,12 @@ def getFolderHeading(filepath, includeActive):
             } )
     return heading
 
-def copysetup(user, ignore):
+@app.route('/help/', methods = ['GET'])
+def help():
+    user = g.user
+    return render_template('help.html', title='Help', user=user.nickname)
+
+def copysetup(user):
     form = CopyForm()
 
     available = []
@@ -439,12 +461,7 @@ def copysetup(user, ignore):
         subpath = userrepopath + "/" + sub
         if os.path.isdir(subpath):
             available.extend([(sub,sub)])
-	    if ignore is not None:
-                if ignore != subpath:
-                    available.extend([(sub, sub)])
-            else:
-                available.extend([(sub, sub)])
-            available.extend(allsubdirectories(user, sub, "|-", userrepopath, ignore))
+            available.extend(allsubdirectories(user, sub, "|-", userrepopath))
     form.copydirs.choices = available
     return form
 
@@ -483,7 +500,7 @@ def edit(filepath):
             subpath = currentfilepath + "/" + sub
             if os.path.isdir(subpath):
                 options.extend([(sub,sub)])
-                options.extend(allsubdirectories(user, sub, "|-", currentfilepath, None))
+                options.extend(allsubdirectories(user, sub, "|-", currentfilepath))
         else:
 	    currentfilepath = tail
             for sub in os.listdir(currentfilepath):
@@ -495,7 +512,7 @@ def edit(filepath):
 
     compileform.options.choices = options
 
-    copyform = copysetup(user, os.path.split(filepath)[0])
+    copyform = copysetup(user)
 
     if  os.path.isfile(path):
 	output = ""
@@ -567,14 +584,10 @@ def edit(filepath):
 			    if prog.getType() == type:
 				command = prog.getCompile(name, binary, additional, plainname)
 				break
-			#args.append(lang.location)
-			#args.append(binary)
-			#if type == 'java':
-			#    args.append('-cp')
-			#    loc = "\'" + binary + "/*\'"
-			#    flash(loc)
-			#    args.append(loc)
+			
 			args = command.split()
+			
+
 			if lang.additiondir:
                             if additional is not None:
 			    	other = ""
@@ -694,11 +707,16 @@ def edit(filepath):
 def inner(proc):
     	flags = fcntl(proc.stdout, F_GETFL)
         fcntl(proc.stdout, F_SETFL, flags | O_NONBLOCK)
+	#status = os.fdopen(os.dup(proc.stdout.fileno()))
         #yield 'Error: \n'
         while True:
 	    #time.sleep(1)
 	    try:
-        	yield read(proc.stdout.fileno(), 1024),
+		#yield proc.stdout.readline()
+		#yield status.readline()
+		#proc.stdout.flush()
+		#yield read(proc, 1024)
+        	yield read(proc.stdout.fileno(), 1024)
     	    except OSError:
         # the os throws an exception if there is no data
             	yield None
@@ -740,7 +758,9 @@ def run(filepath):
     #text = "javac "+ settings.WORKING_DIR + user.nickname + "/myRepo/hats.java"
     		location = location.replace('local','bin')
     		args = command.split()
-		p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE, cwd=location)
+		#master_fd, slave_fd = pty.openpty()
+		#p = subprocess.Popen(args, bufsize=1, stdout=slave_fd, stderr=subprocess.STDOUT, stdin=subprocess.PIPE, cwd=location)
+		p = subprocess.Popen(args, bufsize=1, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE, cwd=location)
 		time = datetime.datetime.now()
     		id = 1
     		unique = False
@@ -754,6 +774,7 @@ def run(filepath):
 			    unique = False
     		fullid = str(fullid)
     		procobj = type(fullid, (object,), {'name' : fullid,  'out': inner(p), 'proc': p, 'access': time})
+    		#procobj = type(fullid, (object,), {'name' : fullid,  'out': inner(master_fd), 'proc': p, 'access': time})
     		process.append(procobj)
     #process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
     #input = "test input"
@@ -914,7 +935,7 @@ def view(filepath):
 
     folderpath = settings.WORKING_DIR + user.nickname + "/" + filepath
 
-    copyform = copysetup(user, filepath)
+    copyform = copysetup(user)
 
     if request.method == 'POST':
         if "/" in filepath:
@@ -924,19 +945,23 @@ def view(filepath):
                 fullnewdir = settings.WORKING_DIR + user.nickname + "/" + newdir
                 if os.path.exists(fullnewdir + "/" + foldername):
                     flash("Folder cannot be copied, folder with same name already exists", 'error')
-                else:
+                elif newdir == filepath:
+		    flash("This is the current folder and the folder has therefore not been copied", 'error')
+		else:
                     os.system("sudo cp -r " + folderpath + " " + fullnewdir)
                     flash(foldername + " has been copied to " + newdir, 'success')
-                return redirect(url_for('edit', filepath = newdir + "/" + foldername))
+                    return redirect(url_for('view', filepath = newdir + "/" + foldername))
             if request.form.get('viewbar', None) == 'Move':
                 newdir = copyform.copydirs.data
                 fullnewdir = settings.WORKING_DIR + user.nickname + "/" + newdir
                 if os.path.exists(fullnewdir + "/" + foldername):
                     flash("Folder cannot be moved, folder with same name already exists", 'error')
+                elif newdir == filepath:
+                    flash("This is the current folder and the folder has therefore not been moved", 'error')
                 else:
                     os.system("sudo mv " + folderpath + " " + fullnewdir)
                     flash(foldername + " has been moved to " + newdir, 'success')
-                return redirect(url_for('edit', filepath = newdir + "/" + foldername))
+                    return redirect(url_for('view', filepath = newdir + "/" + foldername))
         else:
 	    flash("Cannot move or copy base repository file", 'error')
 	value = request.form.get('add', None)
