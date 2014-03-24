@@ -22,8 +22,6 @@ from itsdangerous import URLSafeSerializer, BadSignature
 from dulwich.repo import Repo
 from plugins import *
 import sys
-import pty
-import select
 
 process = []
 
@@ -578,6 +576,9 @@ def edit(filepath):
 			else:
 			    for option in selected:
 				additional.append(currentfilepath + "/" + option)
+
+			location = tail
+			
         		
 			for language in languages:
 			    prog = language()
@@ -586,17 +587,99 @@ def edit(filepath):
 				break
 			
 			args = command.split()
+
+
+			file = open(path, "r")
+			lines = file.readlines()
+			file.close()
+
+			javapackage = False
+			if type == 'java':
+                       	    file = open(path, "r")
+                    	    javacode = file.read()
+                    	    file.close()
+                    	    package = re.search('package([\n\t ])*([^;]*);', javacode)
+                    	    if package is not None:
+				contents = list(lines)
+				statedpackage = package.group(2)
+				if statedpackage == os.path.split(tail)[1]:
+				    i = 0
+				    endpackage = False
+				    package = False
+				    while i < len(lines) and not endpackage:
+                                	line = lines[i]
+					if package:
+					    contents.pop(i)
+					    if ';' in line:
+                                                endpackage = True
+					elif 'package' in line:
+					    contents.pop(i)
+					    package = True
+					    if ';' in line:
+						endpackage = True 
+				    #location = os.path.split(tail)[0] 
+				    #filename = os.path.split(tail)[1] + "/" + name
+				    
+				    f = open(path, "w")
+                            	    contents = "".join(contents)
+                            	    f.write(contents)
+                            	    f.close()
+				    javapackage = True
+				else:
+				    flash("Incorrect package name in file", 'error')
+				    return redirect(url_for('edit', filepath=filepath))
+
+
+			if type == 'c':
+			    main = re.compile("(.)*int([\t ])*main(.)*")
+			    mainvoid = re.compile("(.)*int([\t ])*main(.)*\(([\t ])*void([\t ])*\)(.)*")
+			    mainall = re.compile("(.)*int([\t ])*main(.)*\(([\t ])*void([\t ])*\){(.)*")
+			    voidend = re.compile("(.)*\(([\t ])*void([\t ])*\){(.)*")
+			    justvoid = re.compile("(.)*\(([\t ])*void([\t ])*\)(.)*")
+			    i = 0
+			    contents = list(lines)
+			    voidfound = False
+			    mainfound = False
+			    while i < len(lines):
+				line = lines[i]
+				if voidfound and "{" in line:
+				    contents.insert(i + 1, 'setvbuf(stdout, (char *) NULL, _IOLBF, 0);\n')
+                                    break
+				if mainfound and justvoid.match(line):
+                                    voidfound = True
+				if mainfound and voidend.match(line):
+                                    contents.insert(i + 1, 'setvbuf(stdout, (char *) NULL, _IOLBF, 0);\n')
+                                    break
+			        if mainall.match(line):
+				    contents.insert(i + 1, 'setvbuf(stdout, (char *) NULL, _IOLBF, 0);\n')
+				    break
+			        elif mainvoid.match(line):
+				    voidfound = True
+				elif main.match(line):
+				    mainfound = True
+				i = i + 1		
 			
+			    f = open(path, "w")
+			    contents = "".join(contents)
+			    f.write(contents)
+			    f.close()
 
 			if lang.additiondir:
                             if additional is not None:
 			    	other = ""
                 	    	for line in additional:
                     		    other = other + line + ":"
-                            p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, cwd=tail, env={'CLASSPATH': ".:" + other})
+                            p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, cwd=location, env={'CLASSPATH': ".:" + other})
 			else:
-			    p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, cwd=tail) 
+			    p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, cwd=location) 
 			p.wait()
+
+			if type == 'c' or javapackage :
+			    f = open(path, "w")
+                            lines = "".join(lines)
+                            f.write(lines)
+                            f.close()
+
 			text = ""
 			for line in p.stdout:
 			    text = text + line
@@ -612,6 +695,7 @@ def edit(filepath):
 			    flash("Compilation Failed", 'error')
 			else:
 			    flash("Compilation Succeeded", 'success')
+
             if request.form.get('btn', None) == 'Favourite':
 		favtail = os.path.split(filepath)[0]
                 repository = favtail.split("/")[0]
@@ -734,6 +818,7 @@ def run(filepath):
     name = os.path.split(filepath)[1]
     tail = os.path.split(filepath)[0]
     templist = name.split('.')
+    filename = templist[0]
 
     path = settings.WORKING_DIR + user.nickname + "/" + filepath
 
@@ -743,39 +828,48 @@ def run(filepath):
             lang = Language.query.filter_by(filetype=filetype).first()
     	    if lang is not None:
     		location = settings.WORKING_DIR + user.nickname + "/" + tail
-		module = sys.modules[lang.modulename]
-                languages = classesinmodule(module)
-                command = None
-                for lang in languages:
-                    prog = lang()
-                    if prog.getType() == filetype:
-                        command = prog.getRun(templist[0])
-                        break
-    		#text = lang.run+ name
-		#if not lang.includetype:
-		#    text = lang.run + templist[0]
-    #text = "java runTest"
-    #text = "javac "+ settings.WORKING_DIR + user.nickname + "/myRepo/hats.java"
-    		location = location.replace('local','bin')
-    		args = command.split()
-		#master_fd, slave_fd = pty.openpty()
-		#p = subprocess.Popen(args, bufsize=1, stdout=slave_fd, stderr=subprocess.STDOUT, stdin=subprocess.PIPE, cwd=location)
-		p = subprocess.Popen(args, bufsize=1, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE, cwd=location)
-		time = datetime.datetime.now()
-    		id = 1
-    		unique = False
-    		fullid = fullid = "" + g.user.nickname + str(id)
-    		while not unique:
-		    unique = True
-    		    for gen in process:
-            		if gen.name == fullid:
-			    id = id + 1
-	    		    fullid = "" + g.user.nickname + str(id)
-			    unique = False
-    		fullid = str(fullid)
-    		procobj = type(fullid, (object,), {'name' : fullid,  'out': inner(p), 'proc': p, 'access': time})
-    		#procobj = type(fullid, (object,), {'name' : fullid,  'out': inner(master_fd), 'proc': p, 'access': time})
-    		process.append(procobj)
+		#if filetype == 'java':
+		    #file = open(path, "r")
+                    #lines = file.read()
+                    #file.close()
+		    #package = re.search('package([\n\t ])*([^;]*);', lines)
+		    #if package is not None:
+			#filename = package.group(2) + "/" + filename
+		location = location.replace('local','bin')
+		if os.path.isdir(location):
+		    module = sys.modules[lang.modulename]
+                    languages = classesinmodule(module)
+                    command = None
+                    for lang in languages:
+                        prog = lang()
+                        if prog.getType() == filetype:
+                            command = prog.getRun(filename)
+                            break
+    		    args = command.split()
+		    p = subprocess.Popen(args, bufsize=1, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE, cwd=location)
+		    time = datetime.datetime.now()
+    		    id = 1
+    		    unique = False
+    		    fullid = fullid = "" + g.user.nickname + str(id)
+    		    while not unique:
+		        unique = True
+    		        for gen in process:
+            		    if gen.name == fullid:
+			        id = id + 1
+	    		        fullid = "" + g.user.nickname + str(id)
+			        unique = False
+    		    fullid = str(fullid)
+    		    procobj = type(fullid, (object,), {'name' : fullid,  'out': inner(p), 'proc': p, 'access': time})
+    		    process.append(procobj)
+		else:
+		    flash("File could not be found. This may be because it has not yet been compiled" ,'error')
+                    return redirect(url_for('edit', filepath=filepath))
+    	    else:
+		flash("Cannot run as file type not supported" ,'error')
+		return redirect(url_for('edit', filepath=filepath))
+	else:
+	    flash("Cannot run as file type not supported" ,'error')
+            return redirect(url_for('edit', filepath=filepath))
     #process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
     #input = "test input"
 
@@ -799,7 +893,6 @@ def run(filepath):
 	#yield p.stdout.readline
         return render_template('run.html', title='Run', heading=name, processid=fullid)
     abort(404)
-    #return Response(stream_template('run.html', title='Run'))
 
 @app.route('/kill_process/<processid>', methods = ['GET'])
 @login_required
