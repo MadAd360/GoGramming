@@ -44,7 +44,7 @@ body {
 {{form.email( class=" form-control", placeholder="Account Email Address")}}
 <p>
 </p>
-{{form.temppassword( class=" form-control", placeholder="Select Reset Code")}}
+{{form.temppassword( class=" form-control", placeholder="Please Provide Temporary Password")}}
 <p>
 </p>
 	{% for error in form.errors.email %}
@@ -54,7 +54,7 @@ body {
         </div>
 	{% endfor %}
 
-  <button type="submit" class="btn btn-default">Reset</button>
+  <button type="submit" class="btn btn-default">Email Reset Link</button>
 </form>
 <p>
 </p>

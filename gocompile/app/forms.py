@@ -4,7 +4,7 @@ from wtforms.validators import Required, Email, EqualTo, Regexp
 from models import User
 import os
 import settings
-from passlib.hash import sha512_crypt
+from passlib.hash import sha256_crypt
 
 class LoginForm(Form):
     username = TextField('username', validators = [Required('Username is Required')])
@@ -31,7 +31,7 @@ class LoginForm(Form):
             return False
 	
         #if not user.check_password(
-	if not sha512_crypt.verify(self.password.data, user.password):
+	if not sha256_crypt.verify(self.password.data, user.password):
             self.password.errors.append('Invalid password')
             return False
 
@@ -131,7 +131,7 @@ class ForgotResetForm(Form):
 
 class ForgotForm(Form):
     email = TextField('email', validators = [Required('Email is Required'), Email()])
-    temppassword = PasswordField('temppassword', validators = [Required('Code is Required')])
+    temppassword = PasswordField('temppassword', validators = [Required('Temporary Password is Required')])
 
     def __init__(self, *args, **kwargs):
         Form.__init__(self, *args, **kwargs)
@@ -150,6 +150,27 @@ class ForgotForm(Form):
 
 	self.user = user
 	return True
+
+class ForgotUserForm(Form):
+    email = TextField('email', validators = [Required('Email is Required'), Email()])
+
+    def __init__(self, *args, **kwargs):
+        Form.__init__(self, *args, **kwargs)
+        self.user = None
+
+    def validate(self):
+        # regular validation
+        rv = Form.validate(self)
+        if not rv:
+            return False
+
+        user = User.query.filter_by(email=self.email.data).first()
+        if user is None:
+            self.email.errors.append('Unknown Email Address')
+            return False
+
+        self.user = user
+        return True
 
 class CopyForm(Form):
     copydirs = SelectField('copydirs')

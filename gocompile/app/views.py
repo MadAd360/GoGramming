@@ -1,7 +1,7 @@
 from flask import render_template, flash, redirect, session, url_for, request, g, make_response, jsonify, Response, abort
 from flask.ext.login import login_user, logout_user, current_user, login_required
 from app import app, db, lm, mail
-from forms import LoginForm, CreateForm, AddForm, ShareForm, CommitForm, PushForm, PullForm, ChangeForm, ForgotForm, ForgotResetForm, CopyForm, CompileForm
+from forms import LoginForm, CreateForm, AddForm, ShareForm, CommitForm, PushForm, PullForm, ChangeForm, ForgotUserForm, ForgotForm, ForgotResetForm, CopyForm, CompileForm
 from models import User, Rpstry, File, Language, Error, ROLE_USER, ROLE_ADMIN
 import os
 import crypt
@@ -11,7 +11,7 @@ from os import O_NONBLOCK, read
 import random
 import datetime
 import settings
-from passlib.hash import sha512_crypt
+from passlib.hash import sha256_crypt
 from app import language_loader
 import time
 from plugins import *
@@ -205,7 +205,7 @@ def sharesetup(user):
 	            db.session.commit()
 		    flash("Unshared with: " + shareuser, 'info')
         else:
-	    flash("User does not exists", 'error')
+	    flash("User does not exist", 'error')
     return form
 
 
@@ -538,7 +538,7 @@ def edit(filepath):
 		open(path, 'w').write(request.form['newcontent'])
                 if lang is not None:
 			if lang.interpreted:
-			    binary = path.replace('local','bin')
+			    binary = path.replace('local','bin', 1)
 			    bintail = os.path.split(binary)[0]
 			    if not os.path.exists(bintail):
 				os.makedirs(bintail)
@@ -561,9 +561,6 @@ def edit(filepath):
        	 	if lang is not None:
 			#args = lang.compile.split()
 			#args.append(path)
-			binary = tail.replace('local','bin')
-			if not os.path.isdir(binary):
-			    os.makedirs(binary)
 			#if lang.file:
 			#    binary = binary + "/" + templist[0]
 			module = sys.modules[lang.modulename]
@@ -578,8 +575,6 @@ def edit(filepath):
 				additional.append(currentfilepath + "/" + option)
 
 			location = tail
-			
-        		
 
 			file = open(path, "r")
 			lines = file.readlines()
@@ -593,12 +588,18 @@ def edit(filepath):
                     	    file.close()
                     	    package = re.search('package([\n\t ])*([^;]*);', javacode)
                     	    if package is not None:
-				
-				flash(package.group(2))
-				location = os.path.split(tail)[0]
-				flash(location)
-				additional.append(location) 
-				filename = os.path.split(tail)[1] + "/" + name
+				statedpackage = package.group(2)
+				if statedpackage == os.path.split(tail)[1]:
+				    location = os.path.split(tail)[0]
+				    additional.append(location) 
+				    filename = os.path.split(tail)[1] + "/" + name
+				else:
+				    flash("Incorrect package name in file", 'error')
+				    return redirect(url_for('edit', filepath=filepath))
+
+			binary = location.replace('local','bin',1)
+			if not os.path.isdir(binary):
+			    os.makedirs(binary)
 
 
 			if type == 'c':
@@ -735,7 +736,8 @@ def edit(filepath):
 		'mergecontent': repotext,
                 'syntax': syntax,
                 'interpreted': interpreted,
-                'merge': True
+                'merge': True,
+		'includedir': lang.additiondir
             }
 	else:
 	    text = open(path, 'r').read()	
@@ -745,7 +747,8 @@ def edit(filepath):
             	'content': text,
 	    	'syntax': syntax,
 	    	'interpreted': interpreted,
-		'merge': False
+		'merge': False,
+		'includedir': lang.additiondir
             }
 	
 	heading = getFolderHeading(filepath, True)
@@ -808,7 +811,15 @@ def run(filepath):
             lang = Language.query.filter_by(filetype=filetype).first()
     	    if lang is not None:
     		location = settings.WORKING_DIR + user.nickname + "/" + tail
-		location = location.replace('local','bin')
+		if filetype == 'java':
+		    file = open(path, "r")
+                    lines = file.read()
+                    file.close()
+		    package = re.search('package([\n\t ])*([^;]*);', lines)
+		    if package is not None:
+			filename = package.group(2) + "/" + filename
+			location = settings.WORKING_DIR + user.nickname + "/" + os.path.split(tail)[0]
+		location = location.replace('local','bin',1)
 		if os.path.isdir(location):
 		    module = sys.modules[lang.modulename]
                     languages = classesinmodule(module)
@@ -819,7 +830,7 @@ def run(filepath):
                             command = prog.getRun(filename)
                             break
     		    args = command.split()
-		    p = subprocess.Popen(args, bufsize=1, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE, cwd=location)
+		    p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE, cwd=location)
 		    time = datetime.datetime.now()
     		    id = 1
     		    unique = False
@@ -956,7 +967,7 @@ def create():
     if form.validate_on_submit():
 	newuser = form.username.data
 	password = crypt.crypt(form.password.data,salt())
-	user = User(nickname=newuser, password=sha512_crypt.encrypt(form.password.data), email=form.email.data, role=ROLE_USER)
+	user = User(nickname=newuser, password=sha256_crypt.encrypt(form.password.data), email=form.email.data, role=ROLE_USER)
 	db.session.add(user)
 	db.session.commit()
         #os.system("sudo useradd -M -p " + password + " " + newuser)
@@ -979,6 +990,7 @@ def create():
 	msg = Message('Confirm Email Address', sender = ADMINS[0], recipients = [user.email])
 	msg.body = "Follow this link to activate account: " + url
 	mail.send(msg)
+	flash("User created and activation email sent")
 	return redirect(url_for('login'))
     return render_template('createAccount.html',
         title = 'Create New Account',
@@ -1004,9 +1016,9 @@ def view(filepath):
     copyform = copysetup(user)
 
     if request.method == 'POST':
-        if "/" in filepath:
-            foldername = os.path.split(filepath)[1]
-	    if request.form.get('viewbar', None) == 'Copy':
+        foldername = os.path.split(filepath)[1]
+	if request.form.get('viewbar', None) == 'Copy':
+            if "/" in filepath:
                 newdir = copyform.copydirs.data
                 fullnewdir = settings.WORKING_DIR + user.nickname + "/" + newdir
                 if os.path.exists(fullnewdir + "/" + foldername):
@@ -1017,7 +1029,10 @@ def view(filepath):
                     os.system("sudo cp -r " + folderpath + " " + fullnewdir)
                     flash(foldername + " has been copied to " + newdir, 'success')
                     return redirect(url_for('view', filepath = newdir + "/" + foldername))
-            if request.form.get('viewbar', None) == 'Move':
+            else:
+                flash("Cannot copy base repository file", 'error')
+	if request.form.get('viewbar', None) == 'Move':
+	    if "/" in filepath:
                 newdir = copyform.copydirs.data
                 fullnewdir = settings.WORKING_DIR + user.nickname + "/" + newdir
                 if os.path.exists(fullnewdir + "/" + foldername):
@@ -1028,8 +1043,15 @@ def view(filepath):
                     os.system("sudo mv " + folderpath + " " + fullnewdir)
                     flash(foldername + " has been moved to " + newdir, 'success')
                     return redirect(url_for('view', filepath = newdir + "/" + foldername))
-        else:
-	    flash("Cannot move or copy base repository file", 'error')
+            else:
+	    	flash("Cannot move base repository file", 'error')
+	if request.form.get('viewbar', None) == 'Delete':
+            if "/" in filepath:
+                os.system("sudo rm -r " + folderpath)
+                flash("Folder has been deleted", 'success')
+                return redirect(url_for('index'))
+            else:
+                flash("Cannot delete base repository file", 'error')
 	value = request.form.get('add', None)
         if value is not None:
                 name = os.path.split(value)[1]
@@ -1087,7 +1109,7 @@ def changepass():
     user = g.user
     form = ChangeForm()
     if form.validate_on_submit():
-	user.password=sha512_crypt.encrypt(form.password.data)
+	user.password=sha256_crypt.encrypt(form.password.data)
 
 	password = crypt.crypt(form.password.data,salt())
 	repos = user.repos
@@ -1146,6 +1168,19 @@ def forgot():
         title = 'Forgot Password',
         form = form)
 
+@app.route('/forgotusername/', methods = ['GET', 'POST'])
+def forgotusername():
+    form = ForgotUserForm()
+    if form.validate_on_submit():
+        user = form.user
+        msg = Message('Password Reset', sender = ADMINS[0], recipients = [user.email])
+        msg.body = "Your username is: " + user.nickname + " (Remember case matters)"
+	mail.send(msg)
+        flash('Username Email Sent')
+        return redirect(url_for('login'))
+    return render_template('forgotUsername.html',
+        title = 'Forgot Username',
+        form = form)
 
 
 @app.route('/forgotChange/<payload>', methods = ['GET', 'POST'])
@@ -1160,7 +1195,7 @@ def forgotchange(payload):
             abort(404)
 
     	user = User.query.get_or_404(code)
-	user.password=sha512_crypt.encrypt(form.password.data)
+	user.password=sha256_crypt.encrypt(form.password.data)
 
         password = crypt.crypt(form.password.data,salt())
         repos = user.repos

@@ -21,6 +21,10 @@ $("#hold").click(function(e) {
     e.stopPropagation();
 });
 
+$("#popover").click(function(e) {
+    e.stopPropagation();
+});
+
 
 $(function(){
     $('#save').tooltip();
@@ -76,18 +80,21 @@ $(document).on('click', '.cancel' , function(){
 
   <button id="save" name="btn" value="Save" type="submit" class="btn btn-default" data-toggle="tooltip" data-placement="top" title="Save"><span class="glyphicon glyphicon-floppy-disk"></span></button>
 {% if not file.interpreted %}
-<a id="compilepop" class="btn btn-default" data-toggle="popover" title="Files to use:" >Compile</a>  
-
+{% if file.includedir %}
+<a id="compilepop" class="btn btn-default" data-toggle="popover" title="Include files from:" >Compile</a>  
+{% else %}
+<a id="compilepop" class="btn btn-default" data-toggle="popover" title="Include files:" >Compile</a>
 {% endif %}
+{% endif %}
+<a href="{{url_for('run', filepath=file.filepath)}}" target="_blank" class="btn btn-default">Run</a>
 <button id='fav' name="btn" value="Favourite" type="submit" class="btn btn-default" data-toggle="tooltip" data-placement="top" title="Favourite"><span class="glyphicon glyphicon-star"></span></button>
-    <a id="popover" class="btn btn-default" data-toggle="popover" title="Are you sure?" >Delete</a>
 
   <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
     <span class="caret"></span>
     <span class="sr-only">Toggle Dropdown</span>
   </button>
   <ul class="dropdown-menu" role="menu">
-<li><a href="{{url_for('run', filepath=file.filepath)}}" target="_blank" >Run</a></li>
+<li><a id="popover" class="btn" data-toggle="popover" title="Are you sure?" >Delete</a></li>
 <li class="divider"></li>
         <li><a>Copy/Move File:</a></li>
         <li><a id="hold">{{copyform.copydirs(class="form-control")}}</a></li>
