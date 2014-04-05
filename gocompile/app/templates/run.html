@@ -33,12 +33,10 @@ $(document).delegate('#input', 'keydown', function(e) {
     var start = $(this).get(0).selectionStart;
     var end = $(this).get(0).selectionEnd;
 
-    // set textarea value to: text before caret + tab + text after caret
     $(this).val($(this).val().substring(0, start)
                 + "\t"
                 + $(this).val().substring(end));
 
-    // put caret at right position again
     $(this).get(0).selectionStart =
     $(this).get(0).selectionEnd = start + 1;
   }
@@ -101,7 +99,7 @@ body {
 </p>
 <p>Output:</p>
 
-<pre id="output" class="outputline"></pre>
+<pre style="height: 200px; overflow-y: scroll;" id="output" class="outputline"></pre>
 
 <script type="text/javascript">
 

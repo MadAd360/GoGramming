@@ -9,20 +9,25 @@ class Java(language.Language):
     def getIfInterpreted(self):
 	return False
 
-    def getCompile(self):
-        return "javac"
+    def getIfAdditionDir(self):
+	return True
 
-    def getCompileLocation(self):
-        return "-d"
+    def getCompile(self, filepath, location, additional, newname):
+	if filepath is not None and location is not None:
+	    basic = "sudo javac " + filepath + " -d " + location
+	    if additional is not None:
+		other = ""
+		for line in additional:
+		    other = other + line + ":" 
+		return basic + " -cp \'.:" + other + "\'" 
+	    else:
+		return basic		
+	else:
+	    return None
 
-    def getCompileIfFile(self):
-	return False
-
-    def getRun(self):
-        return "java "
-
-    def getIfIncludeType(self):
-	return False
+    def getRun(self, filename):
+        return "java " + filename
 
     def getSyntax(self):
         return "text/x-java"
+

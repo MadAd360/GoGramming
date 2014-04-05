@@ -9,20 +9,14 @@ class Python(language.Language):
     def getIfInterpreted(self):
         return True
 
-    def getCompile(self):
-        return ""
-
-    def getCompileLocation(self):
-        return ""
-
-    def getCompileIfFile(self):
-	return False
-
-    def getRun(self):
-        return self.pythonroot + " "
-
-    def getIfIncludeType(self):
+    def getIfAdditionDir(self):
         return True
+
+    def getCompile(self, filepath, location, additional, newname):
+        return ""
+
+    def getRun(self, filename):
+        return self.pythonroot + " " + filename + ".py"
 
     def getSyntax(self):
         return "text/x-python"

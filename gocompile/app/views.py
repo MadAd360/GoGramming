@@ -543,9 +543,17 @@ def edit(filepath):
 			    if not os.path.exists(bintail):
 				os.makedirs(bintail)
 			    command = "cp " + path + " " + binary  
-			    args = command.split()
-			    p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-                            p.wait()
+			    #args = command.split()
+			    #p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                            #p.wait()
+			    os.system(command)
+		else:
+			    binary = path.replace('local','bin', 1)
+                            bintail = os.path.split(binary)[0]
+                            if not os.path.exists(bintail):
+                                os.makedirs(bintail)
+                            command = "cp " + path + " " + binary
+                            os.system(command)
 		flash("File has been saved", 'success')
 	    if request.form.get('btn', None) == 'Delete':
 		deletetail = os.path.split(filepath)[0]
@@ -710,7 +718,19 @@ def edit(filepath):
 	    if startmerge:
 		if endline.match(line):
 		    merge = True 
-	if merge:
+	
+	if lang is None:
+	    text = open(path, 'r').read()
+            file = {
+                'filename': name ,
+                'filepath': filepath,
+                'content': text,
+                'syntax': syntax,
+                'interpreted': interpreted,
+                'merge': False,
+                'includedir': True
+            }
+	elif merge:
 	    currenttext = ""
 	    repotext = ""
 	    currentmerge = True
@@ -774,24 +794,12 @@ def edit(filepath):
 def inner(proc):
     	flags = fcntl(proc.stdout, F_GETFL)
         fcntl(proc.stdout, F_SETFL, flags | O_NONBLOCK)
-	#status = os.fdopen(os.dup(proc.stdout.fileno()))
-        #yield 'Error: \n'
         while True:
-	    #time.sleep(1)
 	    try:
-		#yield proc.stdout.readline()
-		#yield status.readline()
-		#proc.stdout.flush()
-		#yield read(proc, 1024)
         	yield read(proc.stdout.fileno(), 1024)
     	    except OSError:
-        # the os throws an exception if there is no data
             	yield None
-            	#break
-	#for line in iter(process.stdout.readline,''):
-            #time.sleep(5)
-            #if line != '':
-                #yield line
+
 
 @app.route('/run/<path:filepath>', methods = ['GET', 'POST'])
 @login_required

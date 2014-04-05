@@ -14,24 +14,16 @@ class Language(object):
         #This should return a boolena which will state whether the language is interpreted or not
         raise NotImplementedError("Not implemented")
 
-    def getCompile(self):
+    def getCompile(self, filepath, location, additional, newname):
 	#This should return a string which will compile the code
         raise NotImplementedError("Not implemented")
 
-    def getCompileLocation(self):
-        #This should return a string which will state where the compiled code should be placed
-        raise NotImplementedError("Not implemented")
-
-    def getCompileIfFile(self):
-        #This should return a boolean which will state whether the compiled location is a file (or a directory)
-        raise NotImplementedError("Not implemented")
-
-    def getRun(self):
+    def getRun(self, filename):
         #This should return a string which will run the code
         raise NotImplementedError("Not implemented")
 
-    def getIfIncludeType(self):
-        #This should return a boolean to state whether the type must be included when run
+    def getIfAdditionDir(self):
+        #This should return a boolean to state whether directories or specific files are to be included
         raise NotImplementedError("Not implemented")
 
     def getSyntax(self):

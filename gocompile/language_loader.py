@@ -36,7 +36,7 @@ for importer, package_name, ispkg in modules:
 	    prog = lang()
 	    exist = models.Language.query.filter_by(filetype=prog.getType()).first()
             if exist is None:
-	    	db_lang = models.Language(filetype=prog.getType(), interpreted=prog.getIfInterpreted(), compile=prog.getCompile(), location=prog.getCompileLocation(), file=prog.getCompileIfFile(), run=prog.getRun(), includetype=prog.getIfIncludeType(), syntax=prog.getSyntax())
+	    	db_lang = models.Language(modulename=full_package_name, filetype=prog.getType(), interpreted=prog.getIfInterpreted(), additiondir=prog.getIfAdditionDir(), syntax=prog.getSyntax())
 	    	db.session.add(db_lang)
 db.session.commit()
 
