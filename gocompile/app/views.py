@@ -681,7 +681,7 @@ def edit(filepath):
 			    db.session.add(error)
 			db.session.commit()
 			if text:
-			    flash("Compilation Failed", 'error')
+			    flash("Compilation Failed: Errors are shown below editor", 'error')
 			else:
 			    flash("Compilation Succeeded", 'success')
 
