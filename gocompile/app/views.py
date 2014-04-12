@@ -150,9 +150,9 @@ def menusetup(user):
             	    	db.session.add(f)
             	    	db.session.commit()
 		    else:
-			flash('File/directory already exists', 'error')
+			flash('File or directory already exists', 'error')
         else:
-	    flash('Name of new file/directory must not have spaces or slashes', 'error')
+	    flash('Name of new file or directory must not have spaces or slashes', 'error')
     cleanprocess()
     return form
 
@@ -681,7 +681,7 @@ def edit(filepath):
 			    db.session.add(error)
 			db.session.commit()
 			if text:
-			    flash("Compilation Failed: Errors are shown below editor", 'error')
+			    flash("Compilation Failed: Errors can be viewed below editor", 'error')
 			else:
 			    flash("Compilation Succeeded", 'success')
 
