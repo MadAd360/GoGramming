@@ -7,6 +7,7 @@ GoGramming
 System Administrator Guide
 
 Installing the application:
+
 1.	Setup a “Raspberry Pi” with the “Raspbian” operating system installed.
 2.	Download the “GoGramming” application from the “GitHub” project repository. This can be accessed through this URL: https://github.com/MadAd360/GoGramming 
 3.	Install “Nginx” through the “apt-get” Linux command.
