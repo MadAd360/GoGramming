@@ -1,0 +1,198 @@
+{% extends "menubar.html" %}
+{% block head %}
+<script type="text/javascript">
+   $(document).ready(function(){
+       $("#popover").popover({
+           placement : 'top',
+   	html: 'true',
+   	content: '<button name="btn" value="Delete" type="submit" class="btn btn-default">Yes</button>'+'<button name="btn" class="btn btn-default" onclick="$(&quot;#popover&quot;).popover(&quot;hide&quot;);">No</button>'
+   	});
+   
+       $("#compilepop").popover({
+           placement : 'top',
+           html: 'true',
+           content: '<a>{{compileform.options(class="form-control")}}</a>'+'<button id="compile" name="btn" value="Compile" type="submit" class="btn btn-default compile">Compile</button><button name="btn" class="btn btn-default cancel pull-right" onclick="$(&quot;#compilepop&quot;).popover(&quot;hide&quot;);">Cancel</button>'
+   
+   	});
+   
+   
+   $("#hold").click(function(e) {
+       e.stopPropagation();
+   });
+   
+   $("#popover").click(function(e) {
+       e.stopPropagation();
+   });
+   
+   
+   $(function(){
+       $('#save').tooltip();
+       $("#fav").tooltip();
+   });
+   
+   
+   });
+   
+   
+   $(document).on('click', '.compile' , function(){
+   
+          $.ajaxSetup({ cache: false });
+          $( "<div class='alert alert-warning'><strong>Please Wait </strong> Compilation has started</div>" ).insertBefore( ".topofpage" );
+   });
+   
+   $(document).on('click', '.cancel' , function(){
+   
+       var elements = document.getElementById("options").options;
+   
+       for(var i = 0; i < elements.length; i++){
+         elements[i].selected = false;
+       }
+   });
+   
+</script>
+{% endblock %}
+{% block within %}
+<ol class="breadcrumb go-back topofpage">
+   {% for folder in heading %}
+   {% if folder.active %}
+   <li class="active go-back">{{folder.foldername}}</li>
+   {% else %}
+   <li><a href="{{url_for('view', filepath=folder.folderpath)}}" class="go-header teal-hover">{{folder.foldername}}</a></li>
+   {% endif %}
+   {% endfor %}
+</ol>
+<br>
+<form  action="" method="post" name="edit">
+   <div class="panel panel-default">
+      <div class="panel-heading">
+         {{file.filename}}:
+         <div class="btn-group btn-hover pull-right">
+            <button id="save" name="btn" value="Save" type="submit" class="btn btn-default" data-toggle="tooltip" data-placement="top" title="Save"><span class="glyphicon glyphicon-floppy-disk"></span></button>
+            {% if not file.interpreted %}
+            {% if file.includedir %}
+            <a id="compilepop" class="btn btn-default" data-toggle="popover" title="Include files from:" >Compile</a>  
+            {% else %}
+            <a id="compilepop" class="btn btn-default" data-toggle="popover" title="Include files:" >Compile</a>
+            {% endif %}
+            {% endif %}
+            <a href="{{url_for('run', filepath=file.filepath)}}" target="_blank" class="btn btn-default">Run</a>
+            <button id='fav' name="btn" value="Favourite" type="submit" class="btn btn-default" data-toggle="tooltip" data-placement="top" title="Favourite"><span class="glyphicon glyphicon-star"></span></button>
+            <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+            <span class="caret"></span>
+            <span class="sr-only">Toggle Dropdown</span>
+            </button>
+            <ul class="dropdown-menu" role="menu">
+               <li><a id="popover" class="btn" data-toggle="popover" title="Are you sure?" >Delete</a></li>
+               <li class="divider"></li>
+               <li><a>Copy/Move File:</a></li>
+               <li><a id="hold">{{copyform.copydirs(class="form-control")}}</a></li>
+               <li><a><input name="btn" type="submit" value="Copy"></a><a><input name="btn" type="submit" value="Move"></a></li>
+            </ul>
+         </div>
+      </div>
+      <div class="panel-body">
+         <p></p>
+         {% if file.merge %}
+         <p>Changes must be merged with repository version. Make changes then save changes to left panel</p>
+         <textarea id="code" name="newcontent" style="display: none;">{{file.content}}</textarea>
+         <div id="view" name="newcontent">{{file.content}}</div>
+         <div id="view2" style="display: none;">{{file.mergecontent}}</div>
+         <script>
+            var savetext = document.getElementById("code");
+            var value,  orig2, dv, hilight= true;
+            
+            
+            value =  document.getElementById("view").textContent;
+            orig2 = document.getElementById("view2").textContent;
+            
+            function initUI(panes) {
+            if (value == null) return;
+            var target = document.getElementById("view");
+            target.innerHTML = "";
+            dv = CodeMirror.MergeView(target, {
+              value: value,
+              orig: orig2,
+              lineNumbers: false,
+              mode: "{{file.syntax}}",
+              highlightDifferences: hilight
+            });
+            
+            dv.editor().on('change', function(){
+            savetext.value = dv.editor().getValue()
+              });
+            }
+            
+            window.onload = function() {
+            initUI(2);
+            };
+            
+            function toggleDifferences() {
+            dv.setShowDifferences(hilight = !hilight);
+            }
+            
+            
+            function mergeViewHeight(mergeView) {
+            function editorHeight(editor) {
+              if (!editor) return 0;
+              return editor.getScrollInfo().height;
+            }
+            return Math.max(editorHeight(mergeView.leftOriginal()),
+                            editorHeight(mergeView.editor()),
+                            editorHeight(mergeView.rightOriginal()));
+            }
+            
+            function resize(mergeView) {
+            var height = mergeViewHeight(mergeView);
+            for(;;) {
+              if (mergeView.leftOriginal())
+                mergeView.leftOriginal().setSize(null, height);
+              mergeView.editor().setSize(null, height);
+              if (mergeView.rightOriginal())
+                mergeView.rightOriginal().setSize(null, height);
+            
+              var newHeight = mergeViewHeight(mergeView);
+              if (newHeight >= height) break;
+              else height = newHeight;
+            }
+            mergeView.wrap.style.height = height + "px";
+            }
+            
+            
+            
+         </script>
+         {% else %}
+         <textarea id="code" name="newcontent">{{file.content}}</textarea>
+         <script>
+            var cm = CodeMirror.fromTextArea(document.getElementById("code"), {
+                matchBrackets: true,
+                mode: "{{file.syntax}}",
+                theme: "go-theme",
+                lineNumbers: true,
+                foldGutter: true,
+                gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"],
+                extraKeys: {
+                                    "F11": function(cm) {
+                                        cm.setOption("fullScreen", !cm.getOption("fullScreen"));
+                                    }}
+            
+            
+              });
+            cm.setSize(null,550);
+            var savearea = $('textarea[name="newcontent"]').hide();
+            cm.on('change', function(){
+            	cm.save();
+                });
+         </script>
+         {% endif %}
+      </div>
+   </div>
+</form>
+{% if output %}
+<div class="panel panel-default">
+   <div class="panel-heading">Compilation Errors:</div>
+   <div class="panel-body">
+      <pre class="pre-scrollable">{{output}}</pre>
+   </div>
+</div>
+{% endif %}
+{% endblock %}

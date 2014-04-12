@@ -1,0 +1,80 @@
+<!-- extend from base layout -->
+{% extends "base.html" %}
+{% block main %}
+<style type="text/css">
+   html {
+   height: 100%;
+   width: 100%;
+   overflow: hidden;
+   min-width: 100%;
+   min-height: 100%;
+   }
+   body {
+   height: 100%;
+   width: 100%;
+   padding: 0;
+   margin: 0;
+   }
+   .container{
+   height:100%;
+   display:table;
+   width: 100%;
+   padding: 0;
+   }
+   .row-fluid {height: 100%; display:table-cell; vertical-align: middle;}
+</style>
+{% endblock %}
+{% block content %}
+<div class="row-fluid">
+   <div class="panel panel-default span7 col-md-4 col-md-offset-4">
+      <div class="panel-body">
+         <a class="navbar-brand" href="{{ url_for('index') }}"><img src="{{ url_for('static', filename = 'images/go.png') }}" class="img-responsive" alt="Responsive image" border="0"></a>
+         <h1>Sign In</h1>
+         <form role="form" action="" method="post" name="login">
+            {{form.hidden_tag()}}
+            </br>
+            {{form.username( class=" form-control", placeholder="Username")}}
+            <p></p>
+            {{ form.password( class=" form-control", placeholder="Password") }}
+            <p></p>
+            {% with messages = get_flashed_messages() %}
+            {% if messages %}
+            <ul>
+               {% for message in messages %}
+               <div class="alert alert-warning alert-dismissable">
+                  <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+                  {{ message }}
+               </div>
+               {% endfor %}
+            </ul>
+            {% endif %}
+            {% endwith %}
+            {% for error in form.errors.username %}
+            <div class="alert alert-danger alert-dismissable">
+               <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+               {{ error }}
+            </div>
+            {% endfor %}
+            {% for error in form.errors.password %}
+            <div class="alert alert-danger alert-dismissable">
+               <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+               {{ error }}
+            </div>
+            {% endfor %}
+            <div class="form-group">
+               <div class="checkbox">
+                  <label>
+                  {{form.remember_me()}} Remember Me
+                  </label>
+               </div>
+            </div>
+            <button type="submit" class="btn btn-default">Sign In</button>
+         </form>
+         <p></p>
+         <a class="btn btn-default" href="{{ url_for('create') }}">Create Account</a>
+         <p></p>
+         <a class="btn btn-default btn-sm" href="{{ url_for('forgot') }}">Forgot Password</a><a class="btn btn-default btn-sm" href="{{ url_for('forgotusername') }}">Forgot Username</a>
+      </div>
+   </div>
+</div>
+{% endblock %}

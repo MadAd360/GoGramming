@@ -1,0 +1,63 @@
+{% extends "menubar.html" %}
+{% block head %} 
+<style type="text/css"> 
+   .active-colour { 
+   color: #32C0B4 !important;;
+   background-color: #ADE7E1 !important; 
+   }
+   .white-text{
+   color: #ffffff;
+   }
+   .white-text:hover,
+   .white-text:focus {
+   color: #ffffff !important;;
+   background-color: #ADE7E1 !important;;
+   }
+</style>
+{% endblock %}
+{% block within %}
+<h3 class="fav-header">{{ heading }}</h3>
+<ul class="nav nav-pills">
+   {% for repo in repos %}
+   {% if repo.active %}
+   <li class="active"><a class="active-colour" href="">{{repo.reponame}}</a></li>
+   {% else %} 
+   <li><a class="white-text" href="{{url_for('index', activerepo=repo.reponame)}}">{{repo.reponame}}</a></li>
+   {% endif %}
+   {% endfor %}
+</ul>
+<p></p>
+{% for file in files %}
+<form action="" method="post" name="login">
+   <div class="panel panel-default">
+      <div class="panel-heading">
+         {{file.filename}}:
+         <div class="btn-group pull-right">
+            <button id="remove" name="remove" type="submit" value='{{file.filepath}}' class="btn btn-default">Unfavourite</button>
+            <a type="button" href="{{url_for('edit', filepath=file.filepath)}}" class="btn btn-default">Edit</a>
+         </div>
+      </div>
+      <div class="panel-body">
+         <p> 
+         </p>
+         <textarea id="code" name="newcontent">{{file.content}}</textarea>
+         <script>
+            var area = document.getElementById('code');
+            area.setAttribute('id','code{{file.filename}}');
+            var cm = CodeMirror.fromTextArea(document.getElementById('code{{file.filename}}'), {
+            	mode: "{{file.syntax}}",
+            	theme: "go-theme",
+            	lineNumbers: true,
+            	readOnly: true
+            });
+            cm.setSize(null, 300);
+            var savearea = $('textarea[name="newcontent"]').hide();
+            cm.on('change', function(){
+                cm.save();
+            });
+         </script>
+      </div>
+   </div>
+</form>
+{% endfor %}
+{% endblock %}
