@@ -7,6 +7,7 @@ GoGramming
 
 System Administrator Guide
 
+
 Installing the application:
 
 1.	Setup a “Raspberry Pi” with the “Raspbian” operating system installed.
@@ -23,6 +24,7 @@ Installing the application:
 11.	To automatically start server on reboot add the Linux command above through the Linux “crontab” command.
 
 Adding new languages:
+
 1.	Add the necessary files to compile and run the language in the “plugin-resources” folder.
 2.	Create a new Python file in the “plugins” folder.
 3.	Create a new Python class which inherits from the “Language” class.
@@ -33,7 +35,9 @@ Adding new languages:
 
 User Guide
 
+
 The below steps highlight the process of accessing the application and running a program.
+
 1.	Access “GoGramming” application through the following URL: http://www.gogramming.co.uk/ 
 2.	Create an account by selecting the “Create Account” and entering the appropriate information. This must then be activated through email confirmation.
 3.	Enter the details of the created account into the login page to access other features of the application.  
