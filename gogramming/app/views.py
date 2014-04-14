@@ -25,7 +25,7 @@ import sys
 
 process = []
 
-
+#Show an error page if an incorrect URL was input
 @app.errorhandler(404)
 def page_not_found(e):
     return render_template('404.html', title="Page Not Found"), 404
@@ -34,11 +34,12 @@ def page_not_found(e):
 def load_user(id):
     return User.query.get(int(id))
 
+#Set global variable to current logged in user
 @app.before_request
 def before_request():
     g.user = current_user
 
-
+#Function to find all classes in a module
 def classesinmodule(module):
     md = module.__dict__
     return [
@@ -47,12 +48,14 @@ def classesinmodule(module):
         )
     ]
 
+#Function to generate a salt for encryption
 def salt():
     letters = 'abcdefghijklmnopqrstuvwxyz' \
               'ABCDEFGHIJKLMNOPQRSTUVWXYZ' \
               '0123456789/.'
     return random.choice(letters) + random.choice(letters)
 
+#Get user folders recursively
 def getfolders(user):
     path = settings.WORKING_DIR + user.nickname
     dirs = []
@@ -90,6 +93,7 @@ def recurfolders(user, userpath, iternum):
             }])
     return dirs
 
+#Get all subdirectories of a specified folder
 def allsubdirectories(user, parentpath, prefix, basepath):
     available = []
     path = basepath + "/" + parentpath
@@ -104,6 +108,7 @@ def allsubdirectories(user, parentpath, prefix, basepath):
     return available
 
 
+#Set up file and folder creation functionality
 def menusetup(user):
     form = AddForm()
     available = []
@@ -156,6 +161,8 @@ def menusetup(user):
     cleanprocess()
     return form
 
+
+#Set up repository share functionality
 def sharesetup(user):
     form = ShareForm()
     if request.form.get('bar', None) == 'Share/Unshare':
@@ -209,6 +216,7 @@ def sharesetup(user):
     return form
 
 
+#Set up Git commit functionality
 def commitsetup(user):
     form = CommitForm()
     repos = []
@@ -237,6 +245,8 @@ def commitsetup(user):
 	        flash("Commit message cannot be blank", 'error')
     return form
 
+
+#Set up Git pull functionality
 def pullsetup(user):
     form = PullForm()
     repos = []
@@ -262,6 +272,8 @@ def pullsetup(user):
 	        flash("Pulling from \"" + displayname + "\"", 'info')
     return form
 
+
+#Set up Git push functionality
 def pushsetup(user):
     form = PushForm()
     repos = []
@@ -286,6 +298,7 @@ def pushsetup(user):
     return form
 
 
+#Terminate processes that are not being accessed
 def cleanprocess():
     global process
     current = datetime.datetime.now()
@@ -296,6 +309,7 @@ def cleanprocess():
 	    process.remove(gen)
 
 
+#Return repositories the user has access to
 def getrepos(user, activerepo):
     repos = []
     for rpstry in user.repos.all():
@@ -315,11 +329,14 @@ def getrepos(user, activerepo):
     return repos
 
 
+#Favourites page functionality
 @app.route('/index/', methods = ['GET', 'POST'])
 @app.route('/index/<activerepo>', methods = ['GET', 'POST'])
 @login_required
 def index(activerepo=None):
     user = g.user
+    
+    #Set up menubar functionality
     form = menusetup(user)
     dirs = getfolders(user)
     shareform = sharesetup(user)
@@ -335,6 +352,7 @@ def index(activerepo=None):
     dbfiles = dbrepo.files    
     files = []
 
+    #If an action has been performed by user then determine which action
     if request.method == 'POST':
 	    value = request.form.get('remove', None)
             if value is not None:
@@ -345,6 +363,7 @@ def index(activerepo=None):
                 	db.session.delete(f)
                 	db.session.commit()
 
+    #Generate information regarding all favourited files
     for file in dbfiles:
 	name = file.filename
 	path = file.path
@@ -385,7 +404,7 @@ def index(activerepo=None):
         flash("You currently have no files in your favourites section. Create new files or favourite exsting files to view them here.", 'info')
 	
 
-	
+    #Generate HTML web page based on template and parameters	
     return render_template("index.html",
         title = 'Home',
         user = user,
@@ -399,6 +418,8 @@ def index(activerepo=None):
 	repos = getrepos(user, activerepo),
 	heading = 'Favourites')
 
+
+#Generate breadcrumb navigation
 def getFolderHeading(filepath, includeActive):
     heading=[]
     pathsplit = filepath.split("/")
@@ -441,11 +462,13 @@ def getFolderHeading(filepath, includeActive):
             } )
     return heading
 
+#Help page functionality
 @app.route('/help/', methods = ['GET'])
 def help():
     user = g.user
     return render_template('help.html', title='Help', user=user.nickname)
 
+#Set up copy menu functionality
 def copysetup(user):
     form = CopyForm()
 
@@ -459,6 +482,8 @@ def copysetup(user):
     form.copydirs.choices = available
     return form
 
+
+#Edit page functionality
 @app.route('/edit/<path:filepath>/', methods = ['GET', 'POST'])
 @login_required
 def edit(filepath):
@@ -484,6 +509,8 @@ def edit(filepath):
         lang = Language.query.filter_by(filetype=type).first()
 	plainname = filelist[0]
  
+
+    #Generate appropriate compilation options
     compileform = CompileForm()
     options = []
     currentfilepath = ""
@@ -511,6 +538,7 @@ def edit(filepath):
     if  os.path.isfile(path):
 	output = ""
 
+	#If action perfromed then determine which action and perform appropriate operations
 	if request.method == 'POST':
 	    if request.form.get('btn', None) == 'Copy':
 		newdir = copyform.copydirs.data
@@ -557,6 +585,7 @@ def edit(filepath):
 		os.system("sudo rm " + path)
 		flash("File has been deleted", 'success')
 		return redirect(url_for('index'))
+	    #Compile the code
 	    if request.form.get('btn', None) == 'Compile':
 		open(path, 'w').write(request.form['newcontent'])
        	 	if lang is not None:
@@ -579,6 +608,7 @@ def edit(filepath):
 
 			filename = name
 
+			#Java package hard coded solution
 			if type == 'java':
                        	    file = open(path, "r")
                     	    javacode = file.read()
@@ -598,6 +628,7 @@ def edit(filepath):
 			if not os.path.isdir(binary):
 			    os.makedirs(binary)
 
+			#C code hard coded solution to remove buffering
 			if type == 'c':
 			    main = re.compile("(.)*int([\t ])*main(.)*")
 			    mainvoid = re.compile("(.)*int([\t ])*main(.)*\(([\t ])*void([\t ])*\)(.)*")
@@ -632,7 +663,7 @@ def edit(filepath):
 			    f.write(contents)
 			    f.close()
 
-			
+			#Get compile command from plugin
 			for language in languages:
 			    prog = language()
 			    if prog.getType() == type:
@@ -640,7 +671,8 @@ def edit(filepath):
 				break
 			
 			args = command.split()
-
+			
+			#Run compile command for language
 			if lang.additiondir:
                             if additional is not None:
 			    	other = ""
@@ -657,6 +689,7 @@ def edit(filepath):
                             f.write(lines)
                             f.close()
 
+			#Get output of compilation and determine if error
 			text = ""
 			for line in p.stdout:
 			    text = text + line
@@ -801,6 +834,7 @@ def edit(filepath):
     abort(404)
 
 
+#Get output of running program based on ID without blocking
 def inner(proc):
     	flags = fcntl(proc.stdout, F_GETFL)
         fcntl(proc.stdout, F_SETFL, flags | O_NONBLOCK)
@@ -811,6 +845,7 @@ def inner(proc):
             	yield None
 
 
+#Run page functionality
 @app.route('/run/<path:filepath>', methods = ['GET', 'POST'])
 @login_required
 def run(filepath):
@@ -875,6 +910,8 @@ def run(filepath):
         return render_template('run.html', title='Run', heading=name, processid=fullid)
     abort(404)
 
+
+#Kill running program based on ID
 @app.route('/kill_process/<processid>', methods = ['GET'])
 @login_required
 def killProcess(processid):
@@ -887,6 +924,8 @@ def killProcess(processid):
         except StopIteration:
 	    pass
 
+
+#Input data to running program based on ID
 @app.route('/get_input/<processid>', methods = ['GET'])
 @login_required
 def inputrefresh(processid):
@@ -901,6 +940,8 @@ def inputrefresh(processid):
         except StopIteration:
 	    pass
 
+
+#Update the time within the running programs
 @app.route('/get_output/<processid>', methods = ['GET'])
 @login_required
 def outputrefresh(processid):
@@ -917,6 +958,7 @@ def outputrefresh(processid):
 	    return None
 
 
+#Login page functionality
 @app.route('/', methods = ['GET', 'POST'])
 @app.route('/login/', methods = ['GET', 'POST'])
 def login():
@@ -930,18 +972,22 @@ def login():
         title = 'Sign In',
         form = form)
 
+
+#Logout page functionality
 @app.route('/logout/')
 def logout():
     logout_user()
     return redirect(url_for('login'))
 
 
+#Generate a code based on data and secret key
 def get_serializer(secret_key=None):
     if secret_key is None:
         secret_key = app.secret_key
     return URLSafeSerializer(secret_key)
 
 
+#Activation of user
 @app.route('/activate/<payload>')
 def activate_user(payload):
     s = get_serializer()
@@ -957,7 +1003,7 @@ def activate_user(payload):
     return redirect(url_for('login'))
 
 
-
+#Create page functionality
 @app.route('/create/', methods = ['GET', 'POST'])
 def create():
     form = CreateForm()
@@ -993,7 +1039,7 @@ def create():
         form = form)
 
 
-
+#View folder page functionality
 @app.route('/view/<path:filepath>/', methods = ['GET', 'POST'])
 @login_required
 def view(filepath):
@@ -1070,7 +1116,7 @@ def view(filepath):
                     db.session.delete(current)
                     db.session.commit()
 
-
+    #Generate details of files within folder
     if os.path.isdir(folderpath):
     	for sub in os.listdir(folderpath):
 	    fullpath = folderpath + "/" + sub
@@ -1117,6 +1163,7 @@ def view(filepath):
     abort(404)
 
 
+#Change password page functionality
 @app.route('/passwordchange/', methods = ['GET', 'POST'])
 @login_required
 def changepass():
@@ -1163,8 +1210,7 @@ def changepass():
         form = form)
 
 
-
-
+#Forgot password page functionality
 @app.route('/forgot/', methods = ['GET', 'POST'])
 def forgot():
     form = ForgotForm()
@@ -1182,6 +1228,8 @@ def forgot():
         title = 'Forgot Password',
         form = form)
 
+
+#Forgot username page functionality
 @app.route('/forgotusername/', methods = ['GET', 'POST'])
 def forgotusername():
     form = ForgotUserForm()
@@ -1197,6 +1245,7 @@ def forgotusername():
         form = form)
 
 
+#Change forgotten password page functioanlity
 @app.route('/forgotChange/<payload>', methods = ['GET', 'POST'])
 def forgotchange(payload):
     form = ForgotResetForm()
