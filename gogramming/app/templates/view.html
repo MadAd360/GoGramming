@@ -48,8 +48,12 @@
       <div class="panel-heading">
          {{file.filename}}:
          <div class="btn-group pull-right">
-            <button id="remove" name="add" type="submit" value='{{file.filepath}}' class="btn btn-default">Favourite</button>
-            <a type="button" href="{{url_for('edit', filepath=file.filepath)}}" class="btn btn-default">Edit</a>
+	    {% if not file.favourite %}
+            <button id="add" name="add" type="submit" value='{{file.filepath}}' class="btn btn-default">Favourite <span class="glyphicon glyphicon-star"></span></button>
+	    {% else %}            
+            <button id="remove" name="remove" type="submit" value='{{file.filepath}}' class="btn btn-default">Unfavourite <span class="glyphicon glyphicon-star-empty"></span></button>
+            {% endif %}
+	    <a type="button" href="{{url_for('edit', filepath=file.filepath)}}" class="btn btn-default">Edit</a>
          </div>
       </div>
       <div class="panel-body">

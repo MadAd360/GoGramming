@@ -598,7 +598,6 @@ def edit(filepath):
 			if not os.path.isdir(binary):
 			    os.makedirs(binary)
 
-
 			if type == 'c':
 			    main = re.compile("(.)*int([\t ])*main(.)*")
 			    mainvoid = re.compile("(.)*int([\t ])*main(.)*\(([\t ])*void([\t ])*\)(.)*")
@@ -633,7 +632,7 @@ def edit(filepath):
 			    f.write(contents)
 			    f.close()
 
-
+			
 			for language in languages:
 			    prog = language()
 			    if prog.getType() == type:
@@ -670,7 +669,10 @@ def edit(filepath):
 			    db.session.add(error)
 			db.session.commit()
 			if text:
-			    flash("Compilation Failed: Errors can be viewed below editor", 'error')
+			    if "Note: " in text:
+				flash("Compilation Succeeded: Warnings can be viewed below editor", 'info')
+			    else:
+			    	flash("Compilation Failed: Errors can be viewed below editor", 'error')
 			else:
 			    flash("Compilation Succeeded", 'success')
 
@@ -683,7 +685,23 @@ def edit(filepath):
                 if f is not None and current is None:
                     db.session.add(f)
                     db.session.commit()
+	    if request.form.get('btn', None) == 'Unfavourite':
+                favtail = os.path.split(filepath)[0]
+                repository = favtail.split("/")[0]
+                myrepo = user.repos.filter_by(repourl= "/" + repository + "/" ).first()
+                current = myrepo.files.filter_by(filename=name, path=favtail).first()
+                if current is not None:
+                    db.session.delete(current)
+                    db.session.commit()
 
+
+	favfile = False
+	favtail = os.path.split(filepath)[0]
+        repository = favtail.split("/")[0]
+        myrepo = user.repos.filter_by(repourl= "/" + repository + "/" ).first()
+        current = myrepo.files.filter_by(filename=name, path=favtail).first()
+	if current is not None:
+	    favfile = True
 
 	syntax = "javascript"
         if lang is not None:
@@ -717,7 +735,8 @@ def edit(filepath):
                 'syntax': syntax,
                 'interpreted': interpreted,
                 'merge': False,
-                'includedir': True
+                'includedir': True,
+		'favourite': favfile
             }
 	elif merge:
 	    currenttext = ""
@@ -746,7 +765,8 @@ def edit(filepath):
                 'syntax': syntax,
                 'interpreted': interpreted,
                 'merge': True,
-		'includedir': lang.additiondir
+		'includedir': lang.additiondir,
+                'favourite': favfile
             }
 	else:
 	    text = open(path, 'r').read()	
@@ -757,7 +777,8 @@ def edit(filepath):
 	    	'syntax': syntax,
 	    	'interpreted': interpreted,
 		'merge': False,
-		'includedir': lang.additiondir
+		'includedir': lang.additiondir,
+                'favourite': favfile
             }
 	
 	heading = getFolderHeading(filepath, True)
@@ -1029,7 +1050,7 @@ def view(filepath):
                 flash("Cannot delete base repository file", 'error')
 	value = request.form.get('add', None)
         if value is not None:
-                name = os.path.split(value)[1]
+	        name = os.path.split(value)[1]
                 tail = os.path.split(value)[0]
 		repository = tail.split("/")[0]
                 myrepo = user.repos.filter_by(repourl= "/" + repository + "/" ).first()
@@ -1038,6 +1059,16 @@ def view(filepath):
                 if f is not None and current is None:
 		    db.session.add(f)
 		    db.session.commit()
+        value = request.form.get('remove', None)
+        if value is not None:
+                name = os.path.split(value)[1]
+                tail = os.path.split(value)[0]
+                repository = tail.split("/")[0]
+                myrepo = user.repos.filter_by(repourl= "/" + repository + "/" ).first()
+                current = myrepo.files.filter_by(filename=name, path=tail).first()
+                if current is not None:
+                    db.session.delete(current)
+                    db.session.commit()
 
 
     if os.path.isdir(folderpath):
@@ -1052,13 +1083,21 @@ def view(filepath):
             	    lang = Language.query.filter_by(filetype=type).first()
             	    if lang is not None:
                 	syntax = lang.syntax
+		favfile = False
+                tail = filepath
+                repository = tail.split("/")[0]
+                myrepo = user.repos.filter_by(repourl= "/" + repository + "/" ).first()
+                current = myrepo.files.filter_by(filename=name, path=tail).first()
+                if current is not None:
+		    favfile = True
             	text = open(fullpath, 'r').read()
             	files.extend( [
             	{
             	    'filename': name ,
 		    'filepath': filepath + "/" + name,
             	    'content': text,
-		    'syntax': syntax
+		    'syntax': syntax,
+		    'favourite': favfile
            	 }])
 
 	heading = getFolderHeading(filepath, True)

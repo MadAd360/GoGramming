@@ -28,6 +28,7 @@
    $(function(){
        $('#save').tooltip();
        $("#fav").tooltip();
+       $("#unfav").tooltip();
    });
    
    
@@ -76,7 +77,11 @@
             {% endif %}
             {% endif %}
             <a href="{{url_for('run', filepath=file.filepath)}}" target="_blank" class="btn btn-default">Run</a>
+	    {% if not file.favourite %}
             <button id='fav' name="btn" value="Favourite" type="submit" class="btn btn-default" data-toggle="tooltip" data-placement="top" title="Favourite"><span class="glyphicon glyphicon-star"></span></button>
+	    {% else %}
+	    <button id='unfav' name="btn" value="Unfavourite" type="submit" class="btn btn-default" data-toggle="tooltip" data-placement="top" title="Unfavourite"><span class="glyphicon glyphicon-star-empty"></span></button>
+            {% endif %}
             <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
             <span class="caret"></span>
             <span class="sr-only">Toggle Dropdown</span>
