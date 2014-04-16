@@ -5,6 +5,16 @@ GoGramming
 
 
 
+Application Structure
+
+The main implementation of the application consists of numerous template files; a "views.py" file; 
+a "models.py" file; and a "forms.py" file. The template files contain the details of the application 
+web pages. The "views.py" file contains the Python back-end code. The "models.py" file contains the 
+details of the database structure. The "forms.py" file contains the details of the web forms in the 
+application. Additionally several JavaScript and CSS files are utilised.
+
+
+
 System Administrator Guide
 
 
